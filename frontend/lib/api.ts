@@ -11,6 +11,7 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const TOKEN_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
 
 export class ApiError extends Error {
   status: number;
@@ -26,15 +27,43 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+export function setTokens(access: string, refresh?: string | null): void {
+  localStorage.setItem(TOKEN_KEY, access);
+  if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
 }
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+function redirectToLogin(): void {
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login';
+  }
+}
+
+// Intenta renovar el access token con el refresh almacenado. Devuelve el nuevo
+// access o null si no hay refresh o falla (una sola vez, sin recursión).
+async function tryRefresh(): Promise<string | null> {
+  const refresh = typeof window === 'undefined' ? null : localStorage.getItem(REFRESH_KEY);
+  if (!refresh) return null;
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    localStorage.setItem(TOKEN_KEY, data.access_token);
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}, retry = true): Promise<T> {
   const token = getToken();
   const headers = new Headers(options.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -51,10 +80,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   if (response.status === 401) {
-    clearToken();
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login';
+    // Access expirado: intentar renovar con el refresh y reintentar una vez.
+    if (retry && !endpoint.startsWith('/auth/')) {
+      const newAccess = await tryRefresh();
+      if (newAccess) return request<T>(endpoint, options, false);
     }
+    clearToken();
+    redirectToLogin();
     throw new ApiError(401, 'Sesión expirada');
   }
 
@@ -71,7 +103,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // --- Auth ---
 export const authApi = {
-  login: (email: string, password: string): Promise<{ access_token: string; token_type: string }> =>
+  login: (
+    email: string,
+    password: string
+  ): Promise<{ access_token: string; refresh_token: string | null; token_type: string }> =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
 
   me: (): Promise<User> => request('/auth/me'),

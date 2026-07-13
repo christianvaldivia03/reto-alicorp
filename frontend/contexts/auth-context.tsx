@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { User } from '@/lib/types';
-import { authApi, clearToken, getToken, setToken } from '@/lib/api';
+import { authApi, clearToken, getToken, setTokens } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -42,8 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     setIsLoading(true);
     try {
-      const { access_token } = await authApi.login(email, password);
-      setToken(access_token);
+      const { access_token, refresh_token } = await authApi.login(email, password);
+      setTokens(access_token, refresh_token);
       const me = await authApi.me();
       setUser(me);
       return me;
