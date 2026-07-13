@@ -5,6 +5,7 @@ from app.contexts.brand_identity.domain.models import (
     BrandManual,
     BrandParameters,
     BrandRule,
+    BrandSummary,
     RuleType,
 )
 from app.shared.db import connect
@@ -45,3 +46,17 @@ class PostgresBrandManualRepo:
             reglas=[BrandRule(c, t, RuleType(tp)) for c, t, tp in reglas],
             estado=m[3],
         )
+
+    def list_all(self) -> list[BrandSummary]:
+        with connect() as conn:
+            rows = conn.execute(
+                "select id, categoria, tono, publico, estado from brand_manuals"
+            ).fetchall()
+        return [
+            BrandSummary(
+                id=r[0],
+                parametros=BrandParameters(categoria=r[1], tono=r[2], publico=r[3]),
+                estado=r[4],
+            )
+            for r in rows
+        ]

@@ -6,13 +6,15 @@ from app.contexts.brand_identity.application.generate_brand_manual import (
     GenerateBrandManual,
 )
 from app.contexts.identity_access.domain.models import Action
-from app.contexts.identity_access.interfaces.deps import require
+from app.contexts.identity_access.interfaces.deps import get_current_user, require
+from app.contexts.brand_identity.application.list_brands import ListBrands
 from app.contexts.brand_identity.application.retrieve_relevant_rules import (
     RetrieveRelevantRules,
 )
-from app.contexts.brand_identity.domain.models import BrandManual, BrandRule
+from app.contexts.brand_identity.domain.models import BrandManual, BrandRule, BrandSummary
 from app.contexts.brand_identity.interfaces.deps import (
     get_generate_manual,
+    get_list_brands,
     get_retrieve_rules,
 )
 from app.shared.errors import DomainError
@@ -44,6 +46,31 @@ class BrandOut(BaseModel):
     @staticmethod
     def of(m: BrandManual) -> "BrandOut":
         return BrandOut(id=m.id, estado=m.estado, reglas=[RuleOut.of(r) for r in m.reglas])
+
+
+class BrandSummaryOut(BaseModel):
+    id: str
+    categoria: str
+    tono: str
+    publico: str
+
+    @staticmethod
+    def of(s: BrandSummary) -> "BrandSummaryOut":
+        return BrandSummaryOut(
+            id=s.id,
+            categoria=s.parametros.categoria,
+            tono=s.parametros.tono,
+            publico=s.parametros.publico,
+        )
+
+
+@router.get(
+    "",
+    response_model=list[BrandSummaryOut],
+    dependencies=[Depends(get_current_user)],
+)
+def list_brands(uc: ListBrands = Depends(get_list_brands)) -> list[BrandSummaryOut]:
+    return [BrandSummaryOut.of(s) for s in uc.execute()]
 
 
 @router.post(

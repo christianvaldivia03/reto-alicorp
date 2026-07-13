@@ -2,7 +2,11 @@
 los implementa; el dominio no conoce Groq, Gemini ni Postgres."""
 from typing import Optional, Protocol
 
-from app.contexts.brand_identity.domain.models import BrandManual, BrandRule
+from app.contexts.brand_identity.domain.models import (
+    BrandManual,
+    BrandRule,
+    BrandSummary,
+)
 
 
 class TextLlmPort(Protocol):
@@ -17,3 +21,4 @@ class VectorStorePort(Protocol):
 class BrandManualRepository(Protocol):
     def save(self, manual: BrandManual) -> None: ...
     def get(self, brand_id: str) -> Optional[BrandManual]: ...
+    def list_all(self) -> list[BrandSummary]: ...

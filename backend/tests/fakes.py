@@ -52,6 +52,14 @@ class InMemoryBrandManualRepo:
     def get(self, brand_id: str):
         return self.store.get(brand_id)
 
+    def list_all(self):
+        from app.contexts.brand_identity.domain.models import BrandSummary
+
+        return [
+            BrandSummary(id=m.id, parametros=m.parametros, estado=m.estado)
+            for m in self.store.values()
+        ]
+
 
 class InMemoryContentRepo:
     def __init__(self):
@@ -62,6 +70,10 @@ class InMemoryContentRepo:
 
     def get(self, content_id: str):
         return self.store.get(content_id)
+
+    def list(self, estado=None):
+        items = list(self.store.values())
+        return [c for c in items if estado is None or c.estado == estado]
 
 
 class FakeHasher:

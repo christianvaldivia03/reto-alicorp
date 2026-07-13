@@ -36,6 +36,20 @@ class PostgresContentRepo:
             ).fetchone()
         if row is None:
             return None
+        return self._row_to_content(row)
+
+    def list(self, estado: Optional[str] = None) -> list[Content]:
+        sql = "select id, brand_id, tipo, texto, estado, reglas_aplicadas, motivo from contents"
+        params: tuple = ()
+        if estado is not None:
+            sql += " where estado = %s"
+            params = (estado,)
+        with connect() as conn:
+            rows = conn.execute(sql, params).fetchall()
+        return [self._row_to_content(r) for r in rows]
+
+    @staticmethod
+    def _row_to_content(row) -> Content:
         reglas = row[5] if isinstance(row[5], list) else json.loads(row[5])
         return Content(
             id=row[0],

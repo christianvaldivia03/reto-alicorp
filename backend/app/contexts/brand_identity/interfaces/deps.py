@@ -3,6 +3,7 @@ adaptadores reales. En tests se sobrescriben vía app.dependency_overrides."""
 from app.contexts.brand_identity.application.generate_brand_manual import (
     GenerateBrandManual,
 )
+from app.contexts.brand_identity.application.list_brands import ListBrands
 from app.contexts.brand_identity.application.retrieve_relevant_rules import (
     RetrieveRelevantRules,
 )
@@ -31,3 +32,7 @@ def get_generate_manual() -> GenerateBrandManual:
 
 def get_retrieve_rules() -> RetrieveRelevantRules:
     return RetrieveRelevantRules(vector_store=_store())
+
+
+def get_list_brands() -> ListBrands:
+    return ListBrands(brand_repo=PostgresBrandManualRepo())

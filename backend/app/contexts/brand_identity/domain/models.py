@@ -39,6 +39,16 @@ class BrandRule:
             raise DomainError("BrandRule.texto no puede estar vacío")
 
 
+@dataclass(frozen=True)
+class BrandSummary:
+    """Vista ligera del manual para listados/selectores: sin reglas ni
+    embeddings. Evita cargar el agregado completo solo para pintar un combo."""
+
+    id: str
+    parametros: BrandParameters
+    estado: str = "ACTIVO"
+
+
 @dataclass
 class BrandManual:
     """Agregado raíz: el manual de marca. Es la fuente de verdad."""

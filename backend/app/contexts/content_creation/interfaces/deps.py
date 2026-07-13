@@ -6,6 +6,7 @@ from app.contexts.brand_identity.infrastructure.postgres_repo import (
     PostgresBrandManualRepo,
 )
 from app.contexts.content_creation.application.generate_content import GenerateContent
+from app.contexts.content_creation.application.list_content import GetContent, ListContent
 from app.contexts.content_creation.infrastructure.postgres_repo import PostgresContentRepo
 from app.shared.langfuse_tracer import build_tracer
 
@@ -18,3 +19,11 @@ def get_generate_content() -> GenerateContent:
         content_repo=PostgresContentRepo(),
         tracer=build_tracer(),
     )
+
+
+def get_list_content() -> ListContent:
+    return ListContent(content_repo=PostgresContentRepo())
+
+
+def get_get_content() -> GetContent:
+    return GetContent(content_repo=PostgresContentRepo())
