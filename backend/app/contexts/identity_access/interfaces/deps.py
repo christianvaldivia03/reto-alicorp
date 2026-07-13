@@ -7,7 +7,7 @@ En tests se sobrescribe get_current_user con un usuario fijo del rol deseado.
 """
 from fastapi import Depends, Header, HTTPException
 
-from app.contexts.identity_access.application.authenticate import Authenticate
+from app.contexts.identity_access.application.authenticate import Authenticate, RefreshAccess
 from app.contexts.identity_access.application.manage_users import ManageUsers
 from app.contexts.identity_access.domain.models import Action, PermissionPolicy, User
 from app.contexts.identity_access.infrastructure.jwt_token_service import JwtTokenService
@@ -30,6 +30,10 @@ def get_authenticate() -> Authenticate:
     return Authenticate(users=PostgresUserRepo(), hasher=Pbkdf2Hasher(), tokens=JwtTokenService())
 
 
+def get_refresh_access() -> RefreshAccess:
+    return RefreshAccess(users=PostgresUserRepo(), tokens=JwtTokenService())
+
+
 def get_manage_users() -> ManageUsers:
     return ManageUsers(users=PostgresUserRepo(), audit=PostgresAuditLog(), hasher=Pbkdf2Hasher())
 
@@ -45,6 +49,8 @@ def get_current_user(
         claims = tokens.verify(authorization[7:])
     except Exception:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    if claims.get("type") == "refresh":
+        raise HTTPException(status_code=401, detail="Se requiere un access token")
     user = users.get(claims.get("sub", ""))
     if user is None or not user.activo:
         raise HTTPException(status_code=401, detail="Usuario inválido o inactivo")

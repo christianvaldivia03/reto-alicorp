@@ -2,13 +2,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.contexts.identity_access.application.authenticate import Authenticate
+from app.contexts.identity_access.application.authenticate import Authenticate, RefreshAccess
 from app.contexts.identity_access.application.manage_users import ManageUsers
 from app.contexts.identity_access.domain.models import Action, Role, User
 from app.contexts.identity_access.interfaces.deps import (
     get_authenticate,
     get_current_user,
     get_manage_users,
+    get_refresh_access,
     get_user_repo,
     require,
 )
@@ -24,7 +25,12 @@ class LoginIn(BaseModel):
 
 class TokenOut(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str
 
 
 class CreateUserIn(BaseModel):
@@ -51,10 +57,19 @@ class UserOut(BaseModel):
 @router.post("/auth/login", response_model=TokenOut)
 def login(body: LoginIn, uc: Authenticate = Depends(get_authenticate)) -> TokenOut:
     try:
-        token = uc.execute(body.email, body.password)
+        pair = uc.execute(body.email, body.password)
     except DomainError:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
-    return TokenOut(access_token=token)
+    return TokenOut(access_token=pair.access, refresh_token=pair.refresh)
+
+
+@router.post("/auth/refresh", response_model=TokenOut)
+def refresh(body: RefreshIn, uc: RefreshAccess = Depends(get_refresh_access)) -> TokenOut:
+    try:
+        access = uc.execute(body.refresh_token)
+    except DomainError:
+        raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
+    return TokenOut(access_token=access)
 
 
 @router.get("/auth/me", response_model=UserOut)
