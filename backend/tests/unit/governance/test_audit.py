@@ -57,3 +57,49 @@ def test_audit_unknown_content_raises():
     uc, _ = _wire(FakeVision())
     with pytest.raises(DomainError):
         uc.execute(content_id="fantasma", image=b"img", mime="image/png")
+
+
+def _wire_with_content(vision, content):
+    content_repo = InMemoryContentRepo()
+    content_repo.save(content)
+    store = InMemoryVectorStore()
+    store.index("b1", [_RULE])
+    uc = AuditImage(
+        vision=vision,
+        vector_store=store,
+        content_repo=content_repo,
+        report_repo=InMemoryAuditReportRepo(),
+        id_factory=lambda: "r1",
+    )
+    return uc, content_repo
+
+
+def test_audit_no_cumple_auto_rechaza_contenido_pendiente():
+    content = Content(id="c1", brand_id="b1", tipo=ContentType.PROMPT_IMAGEN, texto="x")
+    uc, repo = _wire_with_content(
+        FakeVision(veredicto="NO_CUMPLE", motivo="El logo es demasiado pequeño"), content
+    )
+    uc.execute(content_id="c1", image=b"img", mime="image/png")
+    saved = repo.get("c1")
+    assert saved.estado == "RECHAZADO"
+    assert "logo" in saved.motivo.lower()
+
+
+def test_audit_cumple_no_cambia_estado():
+    content = Content(id="c1", brand_id="b1", tipo=ContentType.PROMPT_IMAGEN, texto="x")
+    uc, repo = _wire_with_content(FakeVision(veredicto="CUMPLE"), content)
+    uc.execute(content_id="c1", image=b"img", mime="image/png")
+    assert repo.get("c1").estado == "PENDIENTE"
+
+
+def test_audit_no_cumple_no_reabre_contenido_ya_resuelto():
+    # Si el contenido ya no está PENDIENTE, la auditoría solo informa (no rechaza).
+    content = Content(
+        id="c1", brand_id="b1", tipo=ContentType.PROMPT_IMAGEN, texto="x", estado="APROBADO"
+    )
+    uc, repo = _wire_with_content(
+        FakeVision(veredicto="NO_CUMPLE", motivo="logo pequeño"), content
+    )
+    report = uc.execute(content_id="c1", image=b"img", mime="image/png")
+    assert report.veredicto is Verdict.NO_CUMPLE
+    assert repo.get("c1").estado == "APROBADO"

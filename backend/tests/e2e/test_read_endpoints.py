@@ -48,6 +48,7 @@ def _seeded_brand_repo() -> InMemoryBrandManualRepo:
 def client():
     content_repo = _seeded_content_repo()
     brand_repo = _seeded_brand_repo()
+    prev = dict(app.dependency_overrides)
     app.dependency_overrides[get_list_brands] = lambda: ListBrands(brand_repo)
     app.dependency_overrides[get_list_content] = lambda: ListContent(content_repo)
     app.dependency_overrides[get_get_content] = lambda: GetContent(content_repo)
@@ -55,8 +56,8 @@ def client():
         id="u", email="u@x.com", rol=Role.APROBADOR_A, activo=True
     )
     yield TestClient(app)
-    for dep in (get_list_brands, get_list_content, get_get_content, get_current_user):
-        app.dependency_overrides.pop(dep, None)
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(prev)
 
 
 def test_list_brands_returns_all(client):

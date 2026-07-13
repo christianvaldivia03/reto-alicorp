@@ -7,6 +7,7 @@ from app.contexts.brand_identity.application.generate_brand_manual import (
 )
 from app.contexts.identity_access.domain.models import Action
 from app.contexts.identity_access.interfaces.deps import get_current_user, require
+from app.contexts.brand_identity.application.get_brand import GetBrand
 from app.contexts.brand_identity.application.list_brands import ListBrands
 from app.contexts.brand_identity.application.retrieve_relevant_rules import (
     RetrieveRelevantRules,
@@ -14,6 +15,7 @@ from app.contexts.brand_identity.application.retrieve_relevant_rules import (
 from app.contexts.brand_identity.domain.models import BrandManual, BrandRule, BrandSummary
 from app.contexts.brand_identity.interfaces.deps import (
     get_generate_manual,
+    get_get_brand,
     get_list_brands,
     get_retrieve_rules,
 )
@@ -87,6 +89,14 @@ def create_brand(
     except DomainError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return BrandOut.of(manual)
+
+
+@router.get("/{brand_id}", response_model=BrandOut, dependencies=[Depends(get_current_user)])
+def get_brand(brand_id: str, uc: GetBrand = Depends(get_get_brand)) -> BrandOut:
+    try:
+        return BrandOut.of(uc.execute(brand_id))
+    except DomainError:
+        raise HTTPException(status_code=404, detail="Marca no encontrada")
 
 
 @router.get("/{brand_id}/rules", response_model=list[RuleOut])

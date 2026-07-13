@@ -57,4 +57,12 @@ class AuditImage:
             reglas_evaluadas=[r.texto for r in rules],
         )
         self._report_repo.save(report)
+
+        # Si la imagen NO cumple, la auditoría cierra el ciclo: el contenido
+        # queda RECHAZADO con el motivo del veredicto. Solo si sigue PENDIENTE
+        # (si ya fue aprobado/rechazado por otra vía, la auditoría solo informa).
+        if report.veredicto is Verdict.NO_CUMPLE and content.estado == "PENDIENTE":
+            content.rechazar(report.motivo)
+            self._content_repo.save(content)
+
         return report
