@@ -61,6 +61,7 @@ create table if not exists audit_log (
 );
 
 alter table contents add column if not exists motivo text;
+alter table contents add column if not exists created_by text;
 
 create table if not exists audit_reports (
     id               text primary key,

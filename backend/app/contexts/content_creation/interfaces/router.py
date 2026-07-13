@@ -10,7 +10,7 @@ from app.contexts.content_creation.interfaces.deps import (
     get_get_content,
     get_list_content,
 )
-from app.contexts.identity_access.domain.models import Action
+from app.contexts.identity_access.domain.models import Action, User
 from app.contexts.identity_access.interfaces.deps import get_current_user, require
 from app.shared.errors import DomainError
 
@@ -30,6 +30,8 @@ class ContentOut(BaseModel):
     texto: str
     estado: str
     reglas_aplicadas: list[str]
+    created_by: str | None = None
+    created_at: str | None = None
 
     @staticmethod
     def of(c: Content) -> "ContentOut":
@@ -40,6 +42,8 @@ class ContentOut(BaseModel):
             texto=c.texto,
             estado=c.estado,
             reglas_aplicadas=c.reglas_aplicadas,
+            created_by=c.created_by,
+            created_at=c.created_at,
         )
 
 
@@ -56,20 +60,19 @@ class ContentDetailOut(ContentOut):
             estado=c.estado,
             reglas_aplicadas=c.reglas_aplicadas,
             motivo=c.motivo,
+            created_by=c.created_by,
+            created_at=c.created_at,
         )
 
 
-@router.post(
-    "",
-    status_code=201,
-    response_model=ContentOut,
-    dependencies=[Depends(require(Action.GENERATE_CONTENT))],
-)
+@router.post("", status_code=201, response_model=ContentOut)
 def generate_content(
-    body: GenerateContentIn, uc: GenerateContent = Depends(get_generate_content)
+    body: GenerateContentIn,
+    actor: User = Depends(require(Action.GENERATE_CONTENT)),
+    uc: GenerateContent = Depends(get_generate_content),
 ) -> ContentOut:
     try:
-        content = uc.execute(body.brand_id, body.tipo, body.brief)
+        content = uc.execute(body.brand_id, body.tipo, body.brief, created_by=actor.id)
     except DomainError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return ContentOut.of(content)

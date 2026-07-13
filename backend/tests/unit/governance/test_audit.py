@@ -59,6 +59,37 @@ def test_audit_unknown_content_raises():
         uc.execute(content_id="fantasma", image=b"img", mime="image/png")
 
 
+def test_list_audits_returns_reports_for_content():
+    from app.contexts.governance.application.list_audits import ListAudits
+
+    reports = InMemoryAuditReportRepo()
+    uc, _ = _wire_with_content_and_reports(
+        FakeVision(veredicto="CUMPLE"),
+        Content(id="c1", brand_id="b1", tipo=ContentType.PROMPT_IMAGEN, texto="x"),
+        reports,
+    )
+    uc.execute(content_id="c1", image=b"img", mime="image/png")
+    history = ListAudits(reports).execute("c1")
+    assert len(history) == 1
+    assert history[0].content_id == "c1"
+    assert ListAudits(reports).execute("otro") == []
+
+
+def _wire_with_content_and_reports(vision, content, reports):
+    content_repo = InMemoryContentRepo()
+    content_repo.save(content)
+    store = InMemoryVectorStore()
+    store.index("b1", [_RULE])
+    uc = AuditImage(
+        vision=vision,
+        vector_store=store,
+        content_repo=content_repo,
+        report_repo=reports,
+        id_factory=lambda: "r1",
+    )
+    return uc, content_repo
+
+
 def _wire_with_content(vision, content):
     content_repo = InMemoryContentRepo()
     content_repo.save(content)

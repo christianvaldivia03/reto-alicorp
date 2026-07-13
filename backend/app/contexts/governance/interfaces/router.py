@@ -10,14 +10,16 @@ from app.contexts.governance.application.approve_content import (
     RejectContent,
 )
 from app.contexts.governance.application.audit_image import AuditImage
+from app.contexts.governance.application.list_audits import ListAudits
 from app.contexts.governance.domain.models import AuditReport
 from app.contexts.governance.interfaces.deps import (
     get_approve_content,
     get_audit_image,
+    get_list_audits,
     get_reject_content,
 )
 from app.contexts.identity_access.domain.models import Action
-from app.contexts.identity_access.interfaces.deps import require
+from app.contexts.identity_access.interfaces.deps import get_current_user, require
 from app.shared.errors import DomainError
 
 router = APIRouter(prefix="/content", tags=["governance"])
@@ -79,6 +81,17 @@ def reject(
         return ContentStateOut.of(uc.execute(content_id, body.motivo))
     except DomainError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+@router.get(
+    "/{content_id}/audits",
+    response_model=list[AuditOut],
+    dependencies=[Depends(get_current_user)],
+)
+def list_audits(
+    content_id: str, uc: ListAudits = Depends(get_list_audits)
+) -> list[AuditOut]:
+    return [AuditOut.of(r) for r in uc.execute(content_id)]
 
 
 @router.post(

@@ -7,6 +7,7 @@ from app.contexts.governance.application.approve_content import (
     RejectContent,
 )
 from app.contexts.governance.application.audit_image import AuditImage
+from app.contexts.governance.application.list_audits import ListAudits
 from app.contexts.governance.infrastructure.gemini_vision import GeminiVision
 from app.contexts.governance.infrastructure.postgres_repo import PostgresAuditReportRepo
 from app.shared.langfuse_tracer import build_tracer
@@ -18,6 +19,10 @@ def get_approve_content() -> ApproveContent:
 
 def get_reject_content() -> RejectContent:
     return RejectContent(PostgresContentRepo())
+
+
+def get_list_audits() -> ListAudits:
+    return ListAudits(PostgresAuditReportRepo())
 
 
 def get_audit_image() -> AuditImage:

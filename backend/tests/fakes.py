@@ -151,6 +151,9 @@ class InMemoryAuditReportRepo:
     def get(self, report_id: str):
         return self.store.get(report_id)
 
+    def list_for_content(self, content_id: str):
+        return [r for r in self.store.values() if r.content_id == content_id]
+
 
 from contextlib import contextmanager
 

@@ -7,9 +7,11 @@ from app.contexts.governance.application.approve_content import (
     RejectContent,
 )
 from app.contexts.governance.application.audit_image import AuditImage
+from app.contexts.governance.application.list_audits import ListAudits
 from app.contexts.governance.interfaces.deps import (
     get_approve_content,
     get_audit_image,
+    get_list_audits,
     get_reject_content,
 )
 from app.contexts.identity_access.domain.models import Role, User
@@ -22,12 +24,14 @@ from tests.fakes import (
     InMemoryVectorStore,
 )
 
-# Repo compartido para que approve/reject vean el mismo contenido.
+# Repos compartidos para que approve/reject/audit vean el mismo estado.
 _content_repo = InMemoryContentRepo()
+_report_repo = InMemoryAuditReportRepo()
 
 
 def _seed():
     _content_repo.store.clear()
+    _report_repo.store.clear()
     _content_repo.save(Content(id="c1", brand_id="b1", tipo=ContentType.GUION, texto="Guion"))
 
 
@@ -45,7 +49,7 @@ def _audit():
         vision=FakeVision(veredicto="NO_CUMPLE", motivo="El logo es demasiado pequeño"),
         vector_store=store,
         content_repo=_content_repo,
-        report_repo=InMemoryAuditReportRepo(),
+        report_repo=_report_repo,
         id_factory=lambda: "r1",
     )
 
@@ -53,6 +57,7 @@ def _audit():
 app.dependency_overrides[get_approve_content] = _approve
 app.dependency_overrides[get_reject_content] = _reject
 app.dependency_overrides[get_audit_image] = _audit
+app.dependency_overrides[get_list_audits] = lambda: ListAudits(_report_repo)
 
 client = TestClient(app)
 
@@ -118,3 +123,13 @@ def test_aprobador_a_cannot_audit_returns_403():
         files={"image": ("logo.png", b"fakebytes", "image/png")},
     )
     assert r.status_code == 403
+
+
+def test_audit_history_lists_previous_reports():
+    _as(Role.APROBADOR_B)
+    client.post("/content/c1/audit", files={"image": ("logo.png", b"x", "image/png")})
+    r = client.get("/content/c1/audits")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body) == 1
+    assert body[0]["content_id"] == "c1"

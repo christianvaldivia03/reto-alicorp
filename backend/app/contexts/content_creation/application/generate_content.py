@@ -58,7 +58,7 @@ class GenerateContent:
         self._banned_terms = banned_terms or []
         self._k = k
 
-    def execute(self, brand_id: str, tipo: str, brief: str) -> Content:
+    def execute(self, brand_id: str, tipo: str, brief: str, created_by: str | None = None) -> Content:
         if self._brand_repo.get(brand_id) is None:
             raise DomainError(f"La marca '{brand_id}' no existe")
         try:
@@ -90,6 +90,7 @@ class GenerateContent:
             tipo=ctype,
             texto=texto,
             reglas_aplicadas=[r.texto for r in rules],
+            created_by=created_by,
         )
         self._content_repo.save(content)
         return content

@@ -75,3 +75,11 @@ def test_generate_content_invalid_type_raises():
     uc, _ = _wire()
     with pytest.raises(DomainError):
         uc.execute(brand_id="b1", tipo="TWEET", brief="algo")
+
+
+def test_generate_content_records_author():
+    uc, _ = _wire()
+    content = uc.execute(
+        brand_id="b1", tipo="DESCRIPCION", brief="algo", created_by="user-42"
+    )
+    assert content.created_by == "user-42"
