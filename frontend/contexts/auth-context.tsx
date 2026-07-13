@@ -1,15 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User, AuthTokens } from '@/lib/types';
-import { mockApi } from '@/lib/mock-api';
+import type { User } from '@/lib/types';
+import { authApi, clearToken, getToken, setToken } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -20,41 +20,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth from localStorage
+  // Rehidratar sesión: si hay token, pedir /auth/me.
   useEffect(() => {
-    const initAuth = async () => {
+    const init = async () => {
+      if (!getToken()) {
+        setIsLoading(false);
+        return;
+      }
       try {
-        const tokens = localStorage.getItem('auth_tokens');
-        if (!tokens) {
-          setIsLoading(false);
-          return;
-        }
-
-        const currentUser = await mockApi.getCurrentUser();
-        setUser(currentUser);
-      } catch (err) {
-        console.error('[v0] Auth initialization failed:', err);
-        localStorage.removeItem('auth_tokens');
-        setError(err instanceof Error ? err.message : 'Failed to initialize auth');
+        setUser(await authApi.me());
+      } catch {
+        clearToken();
       } finally {
         setIsLoading(false);
       }
     };
-
-    initAuth();
+    init();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     setError(null);
     setIsLoading(true);
-
     try {
-      const { user: userData, tokens } = await mockApi.login(email, password);
-      localStorage.setItem('auth_tokens', JSON.stringify(tokens));
-      setUser(userData);
+      const { access_token } = await authApi.login(email, password);
+      setToken(access_token);
+      const me = await authApi.me();
+      setUser(me);
+      return me;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
-      setError(errorMessage);
+      const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      setError(msg);
+      clearToken();
       throw err;
     } finally {
       setIsLoading(false);
@@ -62,16 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    mockApi.logout().catch(() => {
-      // Ignore errors on logout
-    });
-    localStorage.removeItem('auth_tokens');
+    clearToken();
     setUser(null);
     setError(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, error, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, isAuthenticated: !!user, isLoading, error, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

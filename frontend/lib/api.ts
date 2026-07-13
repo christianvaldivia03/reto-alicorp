@@ -1,180 +1,123 @@
+// Capa única de acceso al backend. Toda llamada HTTP pasa por aquí; las
+// pantallas no hacen fetch directo. Endpoints según BACKEND_REQUERIMIENTOS.md §5.
 import type {
   User,
-  AuthTokens,
+  BrandSummary,
   BrandManual,
   Content,
-  ApprovalItem,
-  AuditResult,
-  ApiResponse,
-  CreateBrandManualRequest,
-  CreateBrandManualResponse,
-  CreateContentRequest,
-  CreateContentResponse,
-  UploadImageRequest,
-  UploadImageResponse,
+  ContentState,
+  AuditReport,
 } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const TOKEN_KEY = 'access_token';
 
-// Helper to get stored tokens
-function getStoredTokens(): AuthTokens | null {
-  if (typeof window === 'undefined') return null;
-  const tokens = localStorage.getItem('auth_tokens');
-  return tokens ? JSON.parse(tokens) : null;
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
+  }
 }
 
-// API request handler
-async function apiRequest<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const tokens = getStoredTokens();
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
 
-  if (tokens) {
-    headers['Authorization'] = `Bearer ${tokens.accessToken}`;
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers = new Headers(options.headers);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  // No forzar Content-Type en multipart (el browser pone el boundary).
+  if (options.body && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+  } catch {
+    throw new ApiError(0, 'No se pudo conectar con el servidor');
+  }
 
   if (response.status === 401) {
-    localStorage.removeItem('auth_tokens');
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+    clearToken();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+    throw new ApiError(401, 'Sesión expirada');
   }
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error?.message || `HTTP ${response.status}`);
+    // FastAPI devuelve el error de dominio en `detail`.
+    const detail = typeof data.detail === 'string' ? data.detail : `Error ${response.status}`;
+    throw new ApiError(response.status, detail);
   }
 
+  if (response.status === 204) return undefined as T;
   return response.json();
 }
 
-// Authentication endpoints
+// --- Auth ---
 export const authApi = {
-  login: async (email: string, password: string): Promise<{ user: User; tokens: AuthTokens }> => {
-    return apiRequest('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-  },
+  login: (email: string, password: string): Promise<{ access_token: string; token_type: string }> =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
 
-  logout: async (): Promise<void> => {
-    try {
-      await apiRequest('/auth/logout', { method: 'POST' });
-    } finally {
-      localStorage.removeItem('auth_tokens');
-    }
-  },
-
-  getCurrentUser: async (): Promise<User> => {
-    return apiRequest('/auth/me');
-  },
+  me: (): Promise<User> => request('/auth/me'),
 };
 
-// Brand Manual endpoints
+// --- Marcas ---
 export const brandApi = {
-  create: async (request: CreateBrandManualRequest): Promise<CreateBrandManualResponse> => {
-    return apiRequest('/brand-manuals', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-  },
+  list: (): Promise<BrandSummary[]> => request('/brands'),
 
-  list: async (): Promise<BrandManual[]> => {
-    return apiRequest('/brand-manuals');
-  },
-
-  get: async (id: string): Promise<BrandManual> => {
-    return apiRequest(`/brand-manuals/${id}`);
-  },
+  create: (categoria: string, tono: string, publico: string): Promise<BrandManual> =>
+    request('/brands', { method: 'POST', body: JSON.stringify({ categoria, tono, publico }) }),
 };
 
-// Content endpoints
+// --- Contenido ---
 export const contentApi = {
-  create: async (request: CreateContentRequest): Promise<CreateContentResponse> => {
-    return apiRequest('/content', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-  },
+  create: (brand_id: string, tipo: string, brief: string): Promise<Content> =>
+    request('/content', { method: 'POST', body: JSON.stringify({ brand_id, tipo, brief }) }),
 
-  list: async (): Promise<Content[]> => {
-    return apiRequest('/content');
-  },
+  list: (estado?: string): Promise<Content[]> =>
+    request(`/content${estado ? `?estado=${encodeURIComponent(estado)}` : ''}`),
 
-  get: async (id: string): Promise<Content> => {
-    return apiRequest(`/content/${id}`);
-  },
+  get: (id: string): Promise<Content> => request(`/content/${id}`),
 
-  getApprovalQueue: async (): Promise<ApprovalItem[]> => {
-    return apiRequest('/content/approval-queue');
-  },
+  approve: (id: string): Promise<ContentState> =>
+    request(`/content/${id}/approve`, { method: 'POST' }),
 
-  approve: async (contentId: string): Promise<Content> => {
-    return apiRequest(`/content/${contentId}/approve`, {
-      method: 'POST',
-    });
-  },
+  reject: (id: string, motivo: string): Promise<ContentState> =>
+    request(`/content/${id}/reject`, { method: 'POST', body: JSON.stringify({ motivo }) }),
 
-  reject: async (contentId: string, reason: string): Promise<Content> => {
-    return apiRequest(`/content/${contentId}/reject`, {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-    });
+  audit: (id: string, image: File): Promise<AuditReport> => {
+    const form = new FormData();
+    form.append('image', image);
+    return request(`/content/${id}/audit`, { method: 'POST', body: form });
   },
 };
 
-// Audit endpoints
-export const auditApi = {
-  uploadImage: async (request: UploadImageRequest): Promise<UploadImageResponse> => {
-    return apiRequest('/audit/upload-image', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-  },
-
-  getHistory: async (): Promise<AuditResult[]> => {
-    return apiRequest('/audit/history');
-  },
-
-  get: async (id: string): Promise<AuditResult> => {
-    return apiRequest(`/audit/${id}`);
-  },
-};
-
-// User management endpoints
+// --- Usuarios (Superadmin) ---
 export const usersApi = {
-  list: async (): Promise<User[]> => {
-    return apiRequest('/users');
-  },
+  list: (): Promise<User[]> => request('/users'),
 
-  create: async (email: string, name: string, role: string): Promise<User> => {
-    return apiRequest('/users', {
-      method: 'POST',
-      body: JSON.stringify({ email, name, role }),
-    });
-  },
+  create: (email: string, password: string, rol: string): Promise<User> =>
+    request('/users', { method: 'POST', body: JSON.stringify({ email, password, rol }) }),
 
-  updateRole: async (userId: string, role: string): Promise<User> => {
-    return apiRequest(`/users/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ role }),
-    });
-  },
+  changeRole: (id: string, rol: string): Promise<User> =>
+    request(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ rol }) }),
 
-  deactivate: async (userId: string): Promise<User> => {
-    return apiRequest(`/users/${userId}/deactivate`, {
-      method: 'POST',
-    });
-  },
+  deactivate: (id: string): Promise<User> =>
+    request(`/users/${id}/deactivate`, { method: 'POST' }),
 };

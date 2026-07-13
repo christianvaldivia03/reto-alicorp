@@ -1,210 +1,165 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
 import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { StatusBadge } from '@/components/ui-custom/status-badge';
-import { mockApi } from '@/lib/mock-api';
-import { mockBrandManuals, mockContent } from '@/lib/mock-data';
-import { Content } from '@/lib/types';
+import { brandApi, contentApi } from '@/lib/api';
+import { ContentType, Role } from '@/lib/types';
+import type { BrandSummary, Content } from '@/lib/types';
+
+const TIPOS = [
+  { value: ContentType.DESCRIPCION, label: 'Descripción' },
+  { value: ContentType.GUION, label: 'Guion' },
+  { value: ContentType.PROMPT_IMAGEN, label: 'Prompt de imagen' },
+];
 
 function ContentStudioContent() {
-  const [content, setContent] = useState<Content[]>(mockContent);
-  const [isLoading, setIsLoading] = useState(false);
+  const [brands, setBrands] = useState<BrandSummary[]>([]);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [selectedManualId, setSelectedManualId] = useState(mockBrandManuals[0]?.id || '');
-  const [formData, setFormData] = useState({
-    title: '',
-    text: '',
-  });
+  const [result, setResult] = useState<Content | null>(null);
+  const [brandId, setBrandId] = useState('');
+  const [tipo, setTipo] = useState<string>(ContentType.DESCRIPCION);
+  const [brief, setBrief] = useState('');
 
-  const handleCreateContent = async (e: React.FormEvent) => {
+  useEffect(() => {
+    brandApi
+      .list()
+      .then((bs) => {
+        setBrands(bs);
+        if (bs[0]) setBrandId(bs[0].id);
+      })
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : 'No se pudieron cargar las marcas')
+      );
+  }, []);
+
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
-
+    setResult(null);
+    setGenerating(true);
     try {
-      const response = await mockApi.createContent({
-        brandManualId: selectedManualId,
-        ...formData,
-      });
-      setContent([...content, response.content]);
-      setFormData({ title: '', text: '' });
-      setShowForm(false);
+      setResult(await contentApi.create(brandId, tipo, brief.trim()));
+      setBrief('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create content');
+      setError(err instanceof Error ? err.message : 'No se pudo generar el contenido');
     } finally {
-      setIsLoading(false);
+      setGenerating(false);
     }
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Content Studio</h1>
-          <p className="text-muted-foreground">
-            Create content with AI-powered brand compliance
-          </p>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-        >
-          {showForm ? 'Cancel' : 'Create Content'}
-        </button>
+    <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Generar contenido</h1>
+        <p className="text-muted-foreground">
+          El sistema consulta el manual de marca (RAG) antes de generar y aplica sus reglas.
+        </p>
       </div>
 
-      {error && (
-        <ErrorAlert message={error} onDismiss={() => setError(null)} />
-      )}
+      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {/* Create Form */}
-      {showForm && (
+      {brands.length === 0 ? (
+        <div className="bg-card border border-border rounded-lg p-6 text-center">
+          <p className="text-muted-foreground mb-3">
+            No hay marcas todavía. Crea una marca antes de generar contenido.
+          </p>
+          <Link
+            href="/studio/brand"
+            className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
+          >
+            Ir a Marcas
+          </Link>
+        </div>
+      ) : (
         <div className="bg-card border border-border rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4">New Content</h2>
-          <form onSubmit={handleCreateContent} className="space-y-4">
+          <form onSubmit={handleGenerate} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Brand Manual</label>
+              <label className="block text-sm font-medium mb-2">Marca</label>
               <select
-                value={selectedManualId}
-                onChange={(e) => setSelectedManualId(e.target.value)}
+                value={brandId}
+                onChange={(e) => setBrandId(e.target.value)}
                 className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                {mockBrandManuals.map((manual) => (
-                  <option key={manual.id} value={manual.id}>
-                    {manual.name}
+                {brands.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.categoria} — {b.tono}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium mb-2">Title</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Content title"
-                required
+              <label className="block text-sm font-medium mb-2">Tipo de contenido</label>
+              <select
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value)}
                 className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              >
+                {TIPOS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium mb-2">Content</label>
+              <label className="block text-sm font-medium mb-2">Brief</label>
               <textarea
-                value={formData.text}
-                onChange={(e) => setFormData({ ...formData, text: e.target.value })}
-                placeholder="Write your content here..."
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder="Describe qué quieres generar…"
                 required
-                rows={8}
+                rows={6}
                 className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               />
             </div>
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    Processing...
-                  </>
-                ) : (
-                  'Create & Apply Rules'
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 border border-input rounded-lg font-medium hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={generating || !brief.trim() || !brandId}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+            >
+              {generating ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  Generando…
+                </>
+              ) : (
+                'Generar'
+              )}
+            </button>
           </form>
         </div>
       )}
 
-      {/* Content List */}
-      <div className="space-y-4">
-        {content.map((item) => (
-          <div key={item.id} className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="text-lg font-bold">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Created {new Date(item.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-              <StatusBadge status={item.status} />
-            </div>
-
-            <p className="text-sm mb-4 line-clamp-2">{item.text}</p>
-
-            {/* Applied Rules */}
-            {item.appliedRules.length > 0 && (
-              <div className="mb-4">
-                <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Applied Rules</h4>
-                <div className="flex flex-wrap gap-2">
-                  {item.appliedRules.map((rule) => (
-                    <span
-                      key={rule.id}
-                      className="text-xs bg-primary/10 text-primary px-2 py-1 rounded"
-                    >
-                      {rule.type}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button className="flex-1 px-3 py-2 bg-primary/10 text-primary rounded font-medium text-sm hover:bg-primary/20 transition-colors">
-                View Details
-              </button>
-              {item.status === 'draft' && (
-                <button className="flex-1 px-3 py-2 bg-primary text-primary-foreground rounded font-medium text-sm hover:opacity-90 transition-opacity">
-                  Submit for Approval
-                </button>
-              )}
-            </div>
+      {result && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Contenido generado</h2>
+            <StatusBadge status={result.estado} />
           </div>
-        ))}
-      </div>
-
-      {content.length === 0 && !showForm && (
-        <div className="text-center py-12">
-          <svg
-            className="w-16 h-16 text-muted-foreground mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-            />
-          </svg>
-          <h3 className="text-lg font-semibold mb-2">No content yet</h3>
-          <p className="text-muted-foreground mb-4">Create your first piece of content to get started</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            Create Your First Content
-          </button>
+          <p className="text-sm whitespace-pre-wrap mb-4">{result.texto}</p>
+          {result.reglas_aplicadas.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">
+                Reglas aplicadas (RAG)
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {result.reglas_aplicadas.map((r, i) => (
+                  <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                    {r}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground mt-4">
+            Quedó <strong>Pendiente de aprobación</strong>.
+          </p>
         </div>
       )}
     </div>
@@ -213,8 +168,8 @@ function ContentStudioContent() {
 
 export default function ContentStudio() {
   return (
-    <ProtectedRoute>
-      <AppLayout currentPath="studio">
+    <ProtectedRoute allow={[Role.CREADOR]}>
+      <AppLayout>
         <ContentStudioContent />
       </AppLayout>
     </ProtectedRoute>

@@ -1,161 +1,87 @@
-// Enums
-export enum UserRole {
-  ADMIN = 'admin',
-  BRAND_MANAGER = 'brand_manager',
-  CONTENT_CREATOR = 'content_creator',
-  APPROVER = 'approver',
-  AUDITOR = 'auditor',
+// Modelo de datos: espejo exacto del contrato del backend (ver
+// BACKEND_REQUERIMIENTOS.md §5). El frontend no inventa campos: consume tal cual.
+
+// --- Enums (valores idénticos a los del backend) ---
+export enum Role {
+  SUPERADMIN = 'SUPERADMIN',
+  CREADOR = 'CREADOR',
+  APROBADOR_A = 'APROBADOR_A',
+  APROBADOR_B = 'APROBADOR_B',
+}
+
+export enum ContentType {
+  DESCRIPCION = 'DESCRIPCION',
+  GUION = 'GUION',
+  PROMPT_IMAGEN = 'PROMPT_IMAGEN',
 }
 
 export enum ContentStatus {
-  DRAFT = 'draft',
-  PENDING_APPROVAL = 'pending_approval',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-  PUBLISHED = 'published',
+  PENDIENTE = 'PENDIENTE',
+  APROBADO = 'APROBADO',
+  RECHAZADO = 'RECHAZADO',
 }
 
 export enum RuleType {
-  TONE = 'tone',
-  BRAND_VOICE = 'brand_voice',
-  COMPLIANCE = 'compliance',
-  SEO = 'seo',
-  FORMATTING = 'formatting',
+  PROHIBICION = 'PROHIBICION',
+  RECOMENDACION = 'RECOMENDACION',
+  OBLIGACION = 'OBLIGACION',
 }
 
-export enum AuditStatus {
-  COMPLIANT = 'compliant',
-  NON_COMPLIANT = 'non_compliant',
-  NEEDS_REVIEW = 'needs_review',
+export enum Verdict {
+  CUMPLE = 'CUMPLE',
+  NO_CUMPLE = 'NO_CUMPLE',
 }
 
-// User & Auth
+// --- Entidades ---
 export interface User {
   id: string;
   email: string;
-  name: string;
-  role: UserRole;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  rol: Role;
+  activo: boolean;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-}
-
-export interface AuthContext {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  updateUser: (user: User) => void;
-}
-
-// Brand Manual
 export interface BrandRule {
-  id: string;
-  type: RuleType;
-  title: string;
-  description: string;
-  examples: string[];
+  categoria: string;
+  texto: string;
+  tipo: RuleType;
 }
 
+// Vista ligera del listado (GET /brands).
+export interface BrandSummary {
+  id: string;
+  categoria: string;
+  tono: string;
+  publico: string;
+}
+
+// Respuesta de POST /brands (manual recién generado).
 export interface BrandManual {
   id: string;
-  name: string;
-  description: string;
-  rules: BrandRule[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  estado: string;
+  reglas: BrandRule[];
 }
 
-export interface CreateBrandManualRequest {
-  name: string;
-  description: string;
-  guidelines: string;
-}
-
-export interface CreateBrandManualResponse {
-  manual: BrandManual;
-  generatedRules: BrandRule[];
-}
-
-// Content
 export interface Content {
   id: string;
-  brandManualId: string;
-  title: string;
-  text: string;
-  status: ContentStatus;
-  appliedRules: BrandRule[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  approvedBy?: string;
-  approvedAt?: string;
-  rejectionReason?: string;
+  brand_id: string;
+  tipo: ContentType;
+  texto: string;
+  estado: ContentStatus;
+  reglas_aplicadas: string[];
+  motivo?: string | null;
 }
 
-export interface CreateContentRequest {
-  brandManualId: string;
-  title: string;
-  text: string;
-}
-
-export interface CreateContentResponse {
-  content: Content;
-  generatedText: string;
-  appliedRules: BrandRule[];
-}
-
-// Approval Queue
-export interface ApprovalItem {
+// Resultado de la transición de estado (approve/reject).
+export interface ContentState {
   id: string;
-  contentId: string;
-  title: string;
-  text: string;
-  createdBy: string;
-  createdAt: string;
-  appliedRules: BrandRule[];
+  estado: ContentStatus;
+  motivo: string | null;
 }
 
-// Multimodal Audit
-export interface AuditResult {
+export interface AuditReport {
   id: string;
-  imageUrl: string;
-  status: AuditStatus;
-  confidence: number;
-  violations: string[];
-  suggestions: string[];
-  aiAnalysis: string;
-  uploadedBy: string;
-  uploadedAt: string;
-}
-
-export interface UploadImageRequest {
-  imageBase64: string;
-  brandManualId: string;
-}
-
-export interface UploadImageResponse {
-  result: AuditResult;
-}
-
-// Error Response
-export interface ApiError {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: ApiError;
+  content_id: string;
+  veredicto: Verdict;
+  motivo: string;
+  reglas_evaluadas: string[];
 }

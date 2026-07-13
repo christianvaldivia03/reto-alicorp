@@ -44,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background" style={{ colorScheme: 'light dark' }}>
+    <html lang="es" className="bg-background" style={{ colorScheme: 'light dark' }}>
       <body className={`${geistSans.className} antialiased`}>
         <AuthProvider>
           {children}
