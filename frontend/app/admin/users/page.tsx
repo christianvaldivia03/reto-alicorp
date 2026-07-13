@@ -7,6 +7,7 @@ import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { RoleBadge } from '@/components/ui-custom/role-badge';
 import { usersApi } from '@/lib/api';
+import { useToast } from '@/contexts/toast-context';
 import { Role } from '@/lib/types';
 import { ROLE_LABELS } from '@/lib/roles';
 import type { User } from '@/lib/types';
@@ -14,6 +15,7 @@ import type { User } from '@/lib/types';
 const ROLES = Object.values(Role);
 
 function UserManagementContent() {
+  const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -43,6 +45,7 @@ function UserManagementContent() {
     setBusy(true);
     try {
       await usersApi.create(form.email.trim(), form.password, form.rol);
+      toast('Usuario creado');
       setForm({ email: '', password: '', rol: Role.CREADOR });
       setShowForm(false);
       await load();
@@ -58,6 +61,7 @@ function UserManagementContent() {
     setBusy(true);
     try {
       await usersApi.changeRole(id, rol);
+      toast('Rol actualizado');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cambiar el rol');
@@ -71,6 +75,7 @@ function UserManagementContent() {
     setBusy(true);
     try {
       await usersApi.deactivate(id);
+      toast('Usuario desactivado');
       setConfirmDeactivate(null);
       await load();
     } catch (err) {

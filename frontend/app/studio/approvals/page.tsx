@@ -6,10 +6,12 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { contentApi } from '@/lib/api';
+import { useToast } from '@/contexts/toast-context';
 import { ContentStatus, Role } from '@/lib/types';
 import type { Content } from '@/lib/types';
 
 function ApprovalQueueContent() {
+  const toast = useToast();
   const [queue, setQueue] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
@@ -41,6 +43,7 @@ function ApprovalQueueContent() {
     setActing(true);
     try {
       await contentApi.approve(selected.id);
+      toast('Contenido aprobado');
       setSelected(null);
       await load();
     } catch (err) {
@@ -57,6 +60,7 @@ function ApprovalQueueContent() {
     setActing(true);
     try {
       await contentApi.reject(selected.id, motivo.trim());
+      toast('Contenido rechazado');
       setSelected(null);
       setShowReject(false);
       setMotivo('');
@@ -110,6 +114,14 @@ function ApprovalQueueContent() {
             <div className="bg-card border border-border rounded-lg p-6 space-y-6">
               <div>
                 <p className="text-xs font-medium text-primary mb-1">{selected.tipo}</p>
+                {(selected.created_by || selected.created_at) && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {selected.created_by && <>Autor: {selected.created_by}</>}
+                    {selected.created_at && (
+                      <> · {new Date(selected.created_at).toLocaleString()}</>
+                    )}
+                  </p>
+                )}
                 <p className="text-sm whitespace-pre-wrap">{selected.texto}</p>
               </div>
 

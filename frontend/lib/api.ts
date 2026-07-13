@@ -108,6 +108,8 @@ export const contentApi = {
     form.append('image', image);
     return request(`/content/${id}/audit`, { method: 'POST', body: form });
   },
+
+  audits: (id: string): Promise<AuditReport[]> => request(`/content/${id}/audits`),
 };
 
 // --- Usuarios (Superadmin) ---

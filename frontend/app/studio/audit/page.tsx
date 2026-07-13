@@ -7,10 +7,12 @@ import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { StatusBadge } from '@/components/ui-custom/status-badge';
 import { ApiError, contentApi } from '@/lib/api';
+import { useToast } from '@/contexts/toast-context';
 import { Role, Verdict } from '@/lib/types';
 import type { AuditReport, Content } from '@/lib/types';
 
 function AuditContent() {
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,19 @@ function AuditContent() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Content | null>(null);
   const [report, setReport] = useState<AuditReport | null>(null);
+  const [history, setHistory] = useState<AuditReport[]>([]);
+
+  const loadHistory = (id: string) =>
+    contentApi
+      .audits(id)
+      .then(setHistory)
+      .catch(() => setHistory([]));
+
+  const selectContent = (item: Content) => {
+    setSelected(item);
+    setReport(null);
+    loadHistory(item.id);
+  };
 
   const loadItems = () =>
     contentApi
@@ -45,8 +60,14 @@ function AuditContent() {
     setReport(null);
     setAuditing(true);
     try {
-      setReport(await contentApi.audit(selected.id, file));
+      const r = await contentApi.audit(selected.id, file);
+      setReport(r);
+      toast(
+        r.veredicto === Verdict.CUMPLE ? 'Auditoría: cumple' : 'Auditoría: no cumple · rechazado',
+        r.veredicto === Verdict.CUMPLE ? 'success' : 'error'
+      );
       await loadItems(); // si NO_CUMPLE, el backend rechazó el contenido: refrescar estado
+      await loadHistory(selected.id);
     } catch (err) {
       if (err instanceof ApiError && err.status === 502) {
         setError('El modelo de visión no está disponible, reintenta en unos segundos.');
@@ -83,10 +104,7 @@ function AuditContent() {
             items.map((item) => (
               <button
                 key={item.id}
-                onClick={() => {
-                  setSelected(item);
-                  setReport(null);
-                }}
+                onClick={() => selectContent(item)}
                 className={`w-full text-left p-4 rounded-lg border transition-colors ${
                   selected?.id === item.id
                     ? 'border-primary bg-primary/5'
@@ -178,6 +196,38 @@ function AuditContent() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {history.length > 0 && (
+                <div className="bg-card border border-border rounded-lg p-6">
+                  <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase">
+                    Historial de auditorías ({history.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {history.map((h) => (
+                      <div
+                        key={h.id}
+                        className="flex items-center gap-2 text-sm border-b border-border/50 pb-2 last:border-0"
+                      >
+                        <span
+                          className={
+                            h.veredicto === Verdict.CUMPLE
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-red-600 dark:text-red-400'
+                          }
+                        >
+                          {h.veredicto === Verdict.CUMPLE ? '✓' : '✕'}
+                        </span>
+                        <span className="font-medium">
+                          {h.veredicto === Verdict.CUMPLE ? 'Cumple' : 'No cumple'}
+                        </span>
+                        {h.motivo && (
+                          <span className="text-muted-foreground truncate">— {h.motivo}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

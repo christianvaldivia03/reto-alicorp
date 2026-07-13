@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { StatusBadge } from '@/components/ui-custom/status-badge';
 import { brandApi, contentApi } from '@/lib/api';
+import { useToast } from '@/contexts/toast-context';
 import { ContentType, Role } from '@/lib/types';
 import type { BrandSummary, Content } from '@/lib/types';
 
@@ -18,6 +19,7 @@ const TIPOS = [
 ];
 
 function ContentStudioContent() {
+  const toast = useToast();
   const [brands, setBrands] = useState<BrandSummary[]>([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ function ContentStudioContent() {
     setGenerating(true);
     try {
       setResult(await contentApi.create(brandId, tipo, brief.trim()));
+      toast('Contenido generado · Pendiente de aprobación');
       setBrief('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el contenido');

@@ -69,6 +69,8 @@ export interface Content {
   estado: ContentStatus;
   reglas_aplicadas: string[];
   motivo?: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
 }
 
 // Resultado de la transición de estado (approve/reject).

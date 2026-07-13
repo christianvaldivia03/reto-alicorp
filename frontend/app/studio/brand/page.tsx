@@ -7,10 +7,12 @@ import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { RuleTypeBadge } from '@/components/ui-custom/rule-badge';
 import { brandApi } from '@/lib/api';
+import { useToast } from '@/contexts/toast-context';
 import { Role } from '@/lib/types';
 import type { BrandManual, BrandSummary } from '@/lib/types';
 
 function BrandStudioContent() {
+  const toast = useToast();
   const [brands, setBrands] = useState<BrandSummary[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -67,6 +69,7 @@ function BrandStudioContent() {
         form.publico.trim()
       );
       setGenerated(manual);
+      toast(`Manual generado con ${manual.reglas.length} regla(s)`);
       setForm({ categoria: '', tono: '', publico: '' });
       loadBrands();
     } catch (err) {

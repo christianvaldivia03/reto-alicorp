@@ -29,6 +29,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const visibleNavItems = NAV_ITEMS.filter((item) => user && item.roles.includes(user.rol));
   const homeHref = user ? homeForRole(user.rol) : '/';
+  // Observabilidad: enlace externo al proyecto de Langfuse (Superadmin), si está configurado.
+  const langfuseUrl = process.env.NEXT_PUBLIC_LANGFUSE_URL;
+  const showLangfuse = user?.rol === Role.SUPERADMIN && !!langfuseUrl;
 
   return (
     <div className="flex h-screen bg-background">
@@ -67,6 +70,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   </li>
                 );
               })}
+              {showLangfuse && (
+                <li>
+                  <a
+                    href={langfuseUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-card-foreground/10"
+                  >
+                    Observabilidad ↗
+                  </a>
+                </li>
+              )}
             </ul>
           </nav>
 
