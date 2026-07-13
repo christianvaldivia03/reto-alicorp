@@ -17,6 +17,28 @@ function BrandStudioContent() {
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState<BrandManual | null>(null);
   const [form, setForm] = useState({ categoria: '', tono: '', publico: '' });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<BrandManual | null>(null);
+  const [loadingRules, setLoadingRules] = useState(false);
+
+  const toggleRules = async (id: string) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      setExpanded(null);
+      return;
+    }
+    setExpandedId(id);
+    setExpanded(null);
+    setLoadingRules(true);
+    try {
+      setExpanded(await brandApi.get(id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar las reglas');
+      setExpandedId(null);
+    } finally {
+      setLoadingRules(false);
+    }
+  };
 
   const loadBrands = async () => {
     setLoadingList(true);
@@ -152,9 +174,32 @@ function BrandStudioContent() {
           {brands.map((b) => (
             <div key={b.id} className="bg-card border border-border rounded-lg p-4">
               <p className="font-semibold">{b.categoria}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-2">
                 {b.tono} · {b.publico}
               </p>
+              <button
+                onClick={() => toggleRules(b.id)}
+                className="text-sm text-primary font-medium hover:underline"
+              >
+                {expandedId === b.id ? 'Ocultar reglas' : 'Ver reglas'}
+              </button>
+              {expandedId === b.id && (
+                <div className="mt-3 space-y-2">
+                  {loadingRules ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    expanded?.reglas.map((rule, i) => (
+                      <div key={i} className="bg-background rounded p-2 border border-border/50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <RuleTypeBadge tipo={rule.tipo} />
+                          <span className="text-xs text-muted-foreground">{rule.categoria}</span>
+                        </div>
+                        <p className="text-sm">{rule.texto}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -81,6 +81,8 @@ export const authApi = {
 export const brandApi = {
   list: (): Promise<BrandSummary[]> => request('/brands'),
 
+  get: (id: string): Promise<BrandManual> => request(`/brands/${id}`),
+
   create: (categoria: string, tono: string, publico: string): Promise<BrandManual> =>
     request('/brands', { method: 'POST', body: JSON.stringify({ categoria, tono, publico }) }),
 };

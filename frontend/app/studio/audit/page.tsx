@@ -19,12 +19,19 @@ function AuditContent() {
   const [selected, setSelected] = useState<Content | null>(null);
   const [report, setReport] = useState<AuditReport | null>(null);
 
-  useEffect(() => {
+  const loadItems = () =>
     contentApi
       .list()
-      .then(setItems)
-      .catch((err) => setError(err instanceof Error ? err.message : 'No se pudo cargar el contenido'))
-      .finally(() => setLoading(false));
+      .then((list) => {
+        setItems(list);
+        setSelected((prev) => (prev ? list.find((c) => c.id === prev.id) ?? prev : null));
+      })
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : 'No se pudo cargar el contenido')
+      );
+
+  useEffect(() => {
+    loadItems().finally(() => setLoading(false));
   }, []);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,6 +46,7 @@ function AuditContent() {
     setAuditing(true);
     try {
       setReport(await contentApi.audit(selected.id, file));
+      await loadItems(); // si NO_CUMPLE, el backend rechazó el contenido: refrescar estado
     } catch (err) {
       if (err instanceof ApiError && err.status === 502) {
         setError('El modelo de visión no está disponible, reintenta en unos segundos.');
@@ -151,6 +159,11 @@ function AuditContent() {
                     </p>
                   </div>
                   {report.motivo && <p className="text-sm mb-3">{report.motivo}</p>}
+                  {report.veredicto === Verdict.NO_CUMPLE && (
+                    <p className="text-xs font-medium mb-3">
+                      El contenido fue marcado como <strong>Rechazado</strong> por la auditoría.
+                    </p>
+                  )}
                   {report.reglas_evaluadas.length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">
