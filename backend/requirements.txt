@@ -1,0 +1,18 @@
+# Fase 0 — Cimientos
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic-settings==2.7.1
+
+# Fase 1 — Brand Identity + RAG
+groq==0.13.1
+httpx==0.28.1            # cliente de embeddings Gemini (REST) y dependencia de FastAPI TestClient
+psycopg[binary]==3.2.3
+pgvector==0.3.6
+
+# Fase 3 — Identidad y Acceso
+pyjwt==2.10.1
+
+# Fase 4 — Governance (subida de imagen multipart)
+python-multipart==0.0.20
+
+# Fase 5: langfuse

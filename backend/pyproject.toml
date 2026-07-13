@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+markers = [
+    "integration: prueba que usa servicios reales (Groq/Gemini/Supabase); requiere credenciales",
+]
