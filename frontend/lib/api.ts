@@ -4,6 +4,7 @@ import type {
   User,
   BrandSummary,
   BrandManual,
+  BrandRule,
   Content,
   ContentState,
   AuditReport,
@@ -118,8 +119,38 @@ export const brandApi = {
 
   get: (id: string): Promise<BrandManual> => request(`/brands/${id}`),
 
-  create: (categoria: string, tono: string, publico: string): Promise<BrandManual> =>
-    request('/brands', { method: 'POST', body: JSON.stringify({ categoria, tono, publico }) }),
+  create: (
+    categoria: string,
+    tono: string,
+    publico: string,
+    extras: Record<string, string> = {},
+  ): Promise<BrandManual> =>
+    request('/brands', {
+      method: 'POST',
+      body: JSON.stringify({ categoria, tono, publico, extras }),
+    }),
+
+  // Edita una regla; el backend recalcula su embedding (RAG).
+  updateRule: (
+    brandId: string,
+    ruleId: number,
+    data: { categoria: string; texto: string; tipo: string },
+  ): Promise<BrandRule> =>
+    request(`/brands/${brandId}/rules/${ruleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  // Añade una regla nueva (se indexa en el RAG con su embedding).
+  addRule: (
+    brandId: string,
+    data: { categoria: string; texto: string; tipo: string },
+  ): Promise<BrandRule> =>
+    request(`/brands/${brandId}/rules`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Elimina una regla. El backend rechaza borrar la última de la marca.
+  deleteRule: (brandId: string, ruleId: number): Promise<void> =>
+    request(`/brands/${brandId}/rules/${ruleId}`, { method: 'DELETE' }),
 };
 
 // --- Contenido ---

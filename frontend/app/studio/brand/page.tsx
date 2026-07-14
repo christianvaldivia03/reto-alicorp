@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Palette, Sparkles, Loader2, Library, ArrowRight } from 'lucide-react';
+import { Palette, Sparkles, Loader2, Library, Plus, Trash2 } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
@@ -10,12 +10,14 @@ import { RuleTypeBadge } from '@/components/ui-custom/rule-badge';
 import { PageHeader } from '@/components/ui-custom/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Field, Input } from '@/components/ui/input';
+import { Field, Input, Label } from '@/components/ui/input';
 import { Reveal } from '@/components/ui/reveal';
 import { brandApi } from '@/lib/api';
 import { useToast } from '@/contexts/toast-context';
 import { Role } from '@/lib/types';
 import type { BrandManual, BrandRule } from '@/lib/types';
+
+type Extra = { label: string; valor: string };
 
 function RuleRow({ rule }: { rule: BrandRule }) {
   return (
@@ -35,21 +37,36 @@ function BrandStudioContent() {
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState<BrandManual | null>(null);
   const [form, setForm] = useState({ categoria: '', tono: '', publico: '' });
+  // Parámetros dinámicos opcionales que el usuario puede añadir.
+  const [extras, setExtras] = useState<Extra[]>([]);
+
+  const addExtra = () => setExtras((xs) => [...xs, { label: '', valor: '' }]);
+  const removeExtra = (i: number) => setExtras((xs) => xs.filter((_, idx) => idx !== i));
+  const updateExtra = (i: number, key: keyof Extra, val: string) =>
+    setExtras((xs) => xs.map((x, idx) => (idx === i ? { ...x, [key]: val } : x)));
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setGenerated(null);
     setCreating(true);
+    // Sólo parámetros extra completos (label y valor no vacíos).
+    const extrasObj = Object.fromEntries(
+      extras
+        .filter((x) => x.label.trim() && x.valor.trim())
+        .map((x) => [x.label.trim(), x.valor.trim()]),
+    );
     try {
       const manual = await brandApi.create(
         form.categoria.trim(),
         form.tono.trim(),
         form.publico.trim(),
+        extrasObj,
       );
       setGenerated(manual);
       toast(`Manual generado con ${manual.reglas.length} regla(s)`);
       setForm({ categoria: '', tono: '', publico: '' });
+      setExtras([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el manual');
     } finally {
@@ -86,7 +103,9 @@ function BrandStudioContent() {
             <Card className="lg:sticky lg:top-6">
               <CardHeader>
                 <CardTitle>Nueva marca</CardTitle>
-                <CardDescription>Tres señales bastan para generar el manual.</CardDescription>
+                <CardDescription>
+                  Tres señales base; añade los parámetros extra que necesites.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreate} className="space-y-4">
@@ -117,6 +136,43 @@ function BrandStudioContent() {
                       required
                     />
                   </Field>
+
+                  {/* Parámetros dinámicos */}
+                  {extras.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Parámetros adicionales</Label>
+                      {extras.map((x, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <Input
+                            value={x.label}
+                            onChange={(e) => updateExtra(i, 'label', e.target.value)}
+                            placeholder="Parámetro (ej. Región)"
+                            aria-label={`Nombre del parámetro ${i + 1}`}
+                          />
+                          <Input
+                            value={x.valor}
+                            onChange={(e) => updateExtra(i, 'valor', e.target.value)}
+                            placeholder="Valor (ej. Perú)"
+                            aria-label={`Valor del parámetro ${i + 1}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeExtra(i)}
+                            className="mt-1 inline-flex cursor-pointer items-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Quitar parámetro ${i + 1}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button type="button" variant="outline" size="sm" onClick={addExtra} className="w-full">
+                    <Plus />
+                    Añadir parámetro
+                  </Button>
+
                   <Button type="submit" size="xl" disabled={creating || !valid} className="w-full">
                     {creating ? (
                       <>
@@ -138,7 +194,7 @@ function BrandStudioContent() {
 
         {/* Resultado */}
         <div className="lg:col-span-3">
-          {generated ? (
+          {generated && (
             <Reveal>
               <Card>
                 <CardHeader>
@@ -154,18 +210,6 @@ function BrandStudioContent() {
                 </CardContent>
               </Card>
             </Reveal>
-          ) : (
-            <div className="flex h-full min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border p-10 text-center">
-              <Palette className="mb-3 size-10 text-muted-foreground" />
-              <p className="max-w-xs text-sm text-muted-foreground">
-                Completa el formulario para generar el manual de marca. Aparecerá aquí y quedará
-                disponible en{' '}
-                <Link href="/studio/brands" className="font-medium text-brand hover:underline">
-                  Marcas existentes
-                </Link>
-                .
-              </p>
-            </div>
           )}
         </div>
       </div>

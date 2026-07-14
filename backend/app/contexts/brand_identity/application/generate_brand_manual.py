@@ -16,12 +16,17 @@ from app.shared.tracing import NullTracer
 
 
 def build_manual_prompt(p: BrandParameters) -> str:
-    return (
+    prompt = (
         "Eres un estratega de marca. Genera un manual de marca como JSON: una lista "
         "de reglas, cada una con 'categoria', 'texto' y 'tipo' "
         "(PROHIBICION | RECOMENDACION | OBLIGACION). Responde SOLO el JSON.\n"
         f"Categoría de producto: {p.categoria}\nTono: {p.tono}\nPúblico objetivo: {p.publico}"
     )
+    # Parámetros dinámicos que el usuario añadió: se suman como contexto extra.
+    extras = {k.strip(): v.strip() for k, v in p.extras.items() if k.strip() and v.strip()}
+    if extras:
+        prompt += "\nOtros parámetros:\n" + "\n".join(f"{k}: {v}" for k, v in extras.items())
+    return prompt
 
 
 class GenerateBrandManual:
@@ -39,10 +44,14 @@ class GenerateBrandManual:
         self._tracer = tracer or NullTracer()
         self._id_factory = id_factory
 
-    def execute(self, categoria: str, tono: str, publico: str) -> BrandManual:
+    def execute(
+        self, categoria: str, tono: str, publico: str, extras: dict[str, str] | None = None
+    ) -> BrandManual:
         # Validación en el borde: si los parámetros son inválidos, DomainError
         # antes de gastar una llamada al LLM.
-        params = BrandParameters(categoria=categoria, tono=tono, publico=publico)
+        params = BrandParameters(
+            categoria=categoria, tono=tono, publico=publico, extras=extras or {}
+        )
 
         prompt = build_manual_prompt(params)
         with self._tracer.span("generate_brand_manual", input=params) as span:

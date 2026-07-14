@@ -41,6 +41,7 @@ export interface User {
 }
 
 export interface BrandRule {
+  id?: number | null; // id de la fila (presente al leer una marca; permite editarla)
   categoria: string;
   texto: string;
   tipo: RuleType;

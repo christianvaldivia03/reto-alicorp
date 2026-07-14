@@ -28,10 +28,19 @@ class InMemoryVectorStore:
         self.data: dict[str, list] = {}
         self.index_calls: list[str] = []
         self.query_calls: list[tuple[str, str]] = []
+        self.add_calls: list[str] = []
+        self.update_calls: list[tuple[str, int]] = []
+        self.delete_calls: list[tuple[str, int]] = []
+        self._seq = 0
 
     def index(self, brand_id: str, rules: list) -> None:
         self.index_calls.append(brand_id)
-        self.data[brand_id] = list(rules)
+        # Asignar ids como haría la BD (bigserial), para poder editar/borrar.
+        stored = []
+        for r in rules:
+            self._seq += 1
+            stored.append(self._with_id(r, self._seq))
+        self.data[brand_id] = stored
 
     def query(self, brand_id: str, text: str, k: int = 5) -> list:
         self.query_calls.append((brand_id, text))
@@ -40,6 +49,45 @@ class InMemoryVectorStore:
         scored = [(s, r) for s, r in scored if s > 0]
         scored.sort(key=lambda x: x[0], reverse=True)
         return [r for _, r in scored[:k]]
+
+    # --- CRUD de reglas: al añadir/editar, la regla queda "embebida" (indexada)
+    # y por tanto recuperable por query() — mismo comportamiento que el RAG real.
+    def add_rule(self, brand_id: str, rule):
+        self._seq += 1
+        stored = self._with_id(rule, self._seq)
+        self.data.setdefault(brand_id, []).append(stored)
+        self.add_calls.append(brand_id)
+        return stored
+
+    def update_rule(self, brand_id: str, rule_id: int, rule):
+        from app.shared.errors import DomainError
+
+        rules = self.data.get(brand_id, [])
+        for i, r in enumerate(rules):
+            if r.id == rule_id:
+                rules[i] = self._with_id(rule, rule_id)
+                self.update_calls.append((brand_id, rule_id))
+                return rules[i]
+        raise DomainError("Regla no encontrada")
+
+    def delete_rule(self, brand_id: str, rule_id: int) -> None:
+        from app.shared.errors import DomainError
+
+        rules = self.data.get(brand_id, [])
+        if len(rules) <= 1:
+            raise DomainError("No se puede eliminar la única regla de la marca")
+        for i, r in enumerate(rules):
+            if r.id == rule_id:
+                rules.pop(i)
+                self.delete_calls.append((brand_id, rule_id))
+                return
+        raise DomainError("Regla no encontrada")
+
+    @staticmethod
+    def _with_id(rule, rid: int):
+        from app.contexts.brand_identity.domain.models import BrandRule
+
+        return BrandRule(rule.categoria, rule.texto, rule.tipo, id=rid)
 
 
 class InMemoryBrandManualRepo:

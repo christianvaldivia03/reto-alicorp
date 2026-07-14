@@ -8,6 +8,11 @@ from app.contexts.brand_identity.application.list_brands import ListBrands
 from app.contexts.brand_identity.application.retrieve_relevant_rules import (
     RetrieveRelevantRules,
 )
+from app.contexts.brand_identity.application.update_brand_rule import (
+    AddBrandRule,
+    DeleteBrandRule,
+    UpdateBrandRule,
+)
 from app.contexts.brand_identity.infrastructure.gemini_embedder import GeminiEmbedder
 from app.contexts.brand_identity.infrastructure.groq_text_llm import GroqTextLlm
 from app.contexts.brand_identity.infrastructure.pgvector_store import PgVectorStore
@@ -33,6 +38,18 @@ def get_generate_manual() -> GenerateBrandManual:
 
 def get_retrieve_rules() -> RetrieveRelevantRules:
     return RetrieveRelevantRules(vector_store=_store())
+
+
+def get_update_rule() -> UpdateBrandRule:
+    return UpdateBrandRule(vector_store=_store())
+
+
+def get_add_rule() -> AddBrandRule:
+    return AddBrandRule(vector_store=_store())
+
+
+def get_delete_rule() -> DeleteBrandRule:
+    return DeleteBrandRule(vector_store=_store())
 
 
 def get_list_brands() -> ListBrands:

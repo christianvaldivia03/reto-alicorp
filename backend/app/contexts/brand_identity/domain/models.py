@@ -14,11 +14,16 @@ class RuleType(str, Enum):
 
 @dataclass(frozen=True)
 class BrandParameters:
-    """Parámetros de entrada de la marca. Value Object inmutable y validado."""
+    """Parámetros de entrada de la marca. Value Object inmutable y validado.
+
+    Los 3 primeros son obligatorios; `extras` son parámetros dinámicos opcionales
+    (label -> valor) que el usuario añade y que enriquecen el prompt del manual.
+    `compare=False` evita romper hash/eq con un dict."""
 
     categoria: str
     tono: str
     publico: str
+    extras: dict[str, str] = field(default_factory=dict, compare=False)
 
     def __post_init__(self):
         for nombre, valor in (("categoria", self.categoria), ("tono", self.tono), ("publico", self.publico)):
@@ -33,6 +38,9 @@ class BrandRule:
     categoria: str
     texto: str
     tipo: RuleType
+    # id de la fila en brand_rules. Solo lo rellena el repo al leer de BD (para
+    # poder editarla); es None al generar. compare=False → no afecta igualdad.
+    id: int | None = field(default=None, compare=False)
 
     def __post_init__(self):
         if not self.texto or not self.texto.strip():

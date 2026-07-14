@@ -2,7 +2,9 @@ import pytest
 
 from app.contexts.brand_identity.application.generate_brand_manual import (
     GenerateBrandManual,
+    build_manual_prompt,
 )
+from app.contexts.brand_identity.domain.models import BrandParameters
 from app.shared.errors import DomainError
 from tests.fakes import FakeTextLlm, InMemoryBrandManualRepo, InMemoryVectorStore
 
@@ -33,6 +35,29 @@ def test_generate_brand_manual_persists_and_indexes():
     assert len(manual.reglas) == 2
     assert repo.get("brand-1") is manual          # persistido
     assert store.index_calls == ["brand-1"]        # indexado en el vector store
+
+
+def test_prompt_includes_extra_parameters():
+    """Los parámetros extra (dinámicos) deben llegar al prompt del LLM."""
+    p = BrandParameters(
+        categoria="Snack de quinua",
+        tono="Divertido",
+        publico="Gen Z",
+        extras={"Región": "Perú", "Presupuesto": "Bajo"},
+    )
+    prompt = build_manual_prompt(p)
+    assert "Región: Perú" in prompt
+    assert "Presupuesto: Bajo" in prompt
+
+
+def test_generate_passes_extras_to_llm():
+    llm = FakeTextLlm(_LLM_JSON)
+    uc = GenerateBrandManual(
+        llm=llm, vector_store=InMemoryVectorStore(),
+        repo=InMemoryBrandManualRepo(), id_factory=lambda: "brand-1",
+    )
+    uc.execute("Snack", "Divertido", "Gen Z", extras={"Canal": "TikTok"})
+    assert "Canal: TikTok" in llm.calls[0]
 
 
 def test_generate_rejects_invalid_params_without_calling_llm():

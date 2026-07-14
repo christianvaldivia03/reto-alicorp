@@ -37,13 +37,13 @@ class PostgresBrandManualRepo:
             if m is None:
                 return None
             reglas = conn.execute(
-                "select categoria, texto, tipo from brand_rules where brand_id = %s",
+                "select id, categoria, texto, tipo from brand_rules where brand_id = %s order by id",
                 (brand_id,),
             ).fetchall()
         return BrandManual(
             id=brand_id,
             parametros=BrandParameters(categoria=m[0], tono=m[1], publico=m[2]),
-            reglas=[BrandRule(c, t, RuleType(tp)) for c, t, tp in reglas],
+            reglas=[BrandRule(c, t, RuleType(tp), id=rid) for rid, c, t, tp in reglas],
             estado=m[3],
         )
 
