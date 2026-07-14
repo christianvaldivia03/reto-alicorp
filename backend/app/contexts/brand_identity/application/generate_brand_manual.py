@@ -12,6 +12,7 @@ from app.contexts.brand_identity.domain.ports import (
     TextLlmPort,
     VectorStorePort,
 )
+from app.shared.errors import DomainError
 from app.shared.tracing import NullTracer
 
 
@@ -20,7 +21,7 @@ def build_manual_prompt(p: BrandParameters) -> str:
         "Eres un estratega de marca. Genera un manual de marca como JSON: una lista "
         "de reglas, cada una con 'categoria', 'texto' y 'tipo' "
         "(PROHIBICION | RECOMENDACION | OBLIGACION). Responde SOLO el JSON.\n"
-        f"Categoría de producto: {p.categoria}\nTono: {p.tono}\nPúblico objetivo: {p.publico}"
+        f"Marca: {p.nombre}\nCategoría de producto: {p.categoria}\nTono: {p.tono}\nPúblico objetivo: {p.publico}"
     )
     # Parámetros dinámicos que el usuario añadió: se suman como contexto extra.
     extras = {k.strip(): v.strip() for k, v in p.extras.items() if k.strip() and v.strip()}
@@ -45,12 +46,26 @@ class GenerateBrandManual:
         self._id_factory = id_factory
 
     def execute(
-        self, categoria: str, tono: str, publico: str, extras: dict[str, str] | None = None
+        self,
+        nombre: str,
+        categoria: str,
+        tono: str,
+        publico: str,
+        extras: dict[str, str] | None = None,
     ) -> BrandManual:
+        # Nombre obligatorio y único: identificador principal de la marca en
+        # todas las vistas. Se valida antes de gastar una llamada al LLM.
+        # ponytail: check-then-insert tiene carrera; el índice único en BD es el
+        # backstop real si dos altas coinciden.
+        if not nombre or not nombre.strip():
+            raise DomainError("El nombre de la marca es obligatorio")
+        if self._repo.nombre_taken(nombre):
+            raise DomainError(f"Ya existe una marca con el nombre '{nombre.strip()}'")
+
         # Validación en el borde: si los parámetros son inválidos, DomainError
         # antes de gastar una llamada al LLM.
         params = BrandParameters(
-            categoria=categoria, tono=tono, publico=publico, extras=extras or {}
+            nombre=nombre.strip(), categoria=categoria, tono=tono, publico=publico, extras=extras or {}
         )
 
         prompt = build_manual_prompt(params)

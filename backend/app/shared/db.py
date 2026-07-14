@@ -64,6 +64,12 @@ create table if not exists audit_log (
 alter table contents add column if not exists motivo text;
 alter table contents add column if not exists created_by text;
 
+-- Nombre de marca: identificador legible, único (case-insensitive). Nullable
+-- para marcas antiguas; la obligatoriedad se impone en el caso de uso al crear.
+alter table brand_manuals add column if not exists nombre text;
+create unique index if not exists brand_manuals_nombre_key
+    on brand_manuals (lower(nombre)) where nombre is not null;
+
 create table if not exists audit_reports (
     id               text primary key,
     content_id       text references contents(id) on delete cascade,
@@ -73,6 +79,9 @@ create table if not exists audit_reports (
     reglas_evaluadas jsonb not null default '[]',
     created_at       timestamptz not null default now()
 );
+
+-- Autor de la auditoría (Aprobador B): para "usuario responsable" en la vista.
+alter table audit_reports add column if not exists actor_id text;
 """
 
 

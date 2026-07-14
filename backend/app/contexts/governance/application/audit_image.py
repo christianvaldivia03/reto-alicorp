@@ -36,7 +36,9 @@ class AuditImage:
         self._id_factory = id_factory
         self._k = k
 
-    def execute(self, content_id: str, image: bytes, mime: str) -> AuditReport:
+    def execute(
+        self, content_id: str, image: bytes, mime: str, actor_id: str | None = None
+    ) -> AuditReport:
         content = self._content_repo.get(content_id)
         if content is None:
             raise DomainError(f"El contenido '{content_id}' no existe")
@@ -55,6 +57,7 @@ class AuditImage:
             veredicto=Verdict(veredicto),
             motivo=motivo,
             reglas_evaluadas=[r.texto for r in rules],
+            actor_id=actor_id,
         )
         self._report_repo.save(report)
 

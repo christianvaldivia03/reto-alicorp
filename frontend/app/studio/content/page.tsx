@@ -166,7 +166,7 @@ function ContentStudioContent() {
                     {result.reglas_aplicadas.map((r, i) => (
                       <span
                         key={i}
-                        className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand ring-1 ring-inset ring-brand/20"
+                        className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand-text ring-1 ring-inset ring-brand/20"
                       >
                         {r}
                       </span>

@@ -50,6 +50,7 @@ export interface BrandRule {
 // Vista ligera del listado (GET /brands).
 export interface BrandSummary {
   id: string;
+  nombre: string; // identificador principal (puede venir vacío en marcas antiguas)
   categoria: string;
   tono: string;
   publico: string;
@@ -58,6 +59,7 @@ export interface BrandSummary {
 // Respuesta de POST /brands (manual recién generado).
 export interface BrandManual {
   id: string;
+  nombre: string;
   estado: string;
   reglas: BrandRule[];
 }
@@ -72,6 +74,7 @@ export interface Content {
   motivo?: string | null;
   created_by?: string | null;
   created_at?: string | null;
+  creator_email?: string | null; // email del creador (para mostrar "quién generó")
 }
 
 // Resultado de la transición de estado (approve/reject).
@@ -84,7 +87,10 @@ export interface ContentState {
 export interface AuditReport {
   id: string;
   content_id: string;
+  brand_id: string;
   veredicto: Verdict;
   motivo: string;
   reglas_evaluadas: string[];
+  actor_email?: string | null; // Aprobador B que ejecutó la auditoría
+  created_at?: string | null;
 }

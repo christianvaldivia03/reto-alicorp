@@ -18,7 +18,7 @@ from app.contexts.governance.interfaces.deps import (
     get_list_audits,
     get_reject_content,
 )
-from app.contexts.identity_access.domain.models import Action
+from app.contexts.identity_access.domain.models import Action, User
 from app.contexts.identity_access.interfaces.deps import get_current_user, require
 from app.shared.errors import DomainError
 
@@ -42,18 +42,24 @@ class ContentStateOut(BaseModel):
 class AuditOut(BaseModel):
     id: str
     content_id: str
+    brand_id: str
     veredicto: str
     motivo: str
     reglas_evaluadas: list[str]
+    actor_email: str | None = None
+    created_at: str | None = None
 
     @staticmethod
     def of(r: AuditReport) -> "AuditOut":
         return AuditOut(
             id=r.id,
             content_id=r.content_id,
+            brand_id=r.brand_id,
             veredicto=r.veredicto.value,
             motivo=r.motivo,
             reglas_evaluadas=r.reglas_evaluadas,
+            actor_email=r.actor_email,
+            created_at=r.created_at,
         )
 
 
@@ -94,19 +100,16 @@ def list_audits(
     return [AuditOut.of(r) for r in uc.execute(content_id)]
 
 
-@router.post(
-    "/{content_id}/audit",
-    response_model=AuditOut,
-    dependencies=[Depends(require(Action.AUDIT_IMAGE))],
-)
+@router.post("/{content_id}/audit", response_model=AuditOut)
 async def audit(
     content_id: str,
     image: UploadFile = File(...),
+    actor: User = Depends(require(Action.AUDIT_IMAGE)),
     uc: AuditImage = Depends(get_audit_image),
 ) -> AuditOut:
     data = await image.read()
     try:
-        report = uc.execute(content_id, data, image.content_type or "image/png")
+        report = uc.execute(content_id, data, image.content_type or "image/png", actor_id=actor.id)
     except DomainError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except httpx.HTTPStatusError as e:

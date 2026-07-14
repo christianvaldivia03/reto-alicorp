@@ -15,11 +15,12 @@ class PostgresBrandManualRepo:
     def save(self, manual: BrandManual) -> None:
         with connect() as conn:
             conn.execute(
-                "insert into brand_manuals(id, categoria, tono, publico, estado) "
-                "values (%s, %s, %s, %s, %s) "
+                "insert into brand_manuals(id, nombre, categoria, tono, publico, estado) "
+                "values (%s, %s, %s, %s, %s, %s) "
                 "on conflict (id) do update set estado = excluded.estado",
                 (
                     manual.id,
+                    manual.parametros.nombre or None,
                     manual.parametros.categoria,
                     manual.parametros.tono,
                     manual.parametros.publico,
@@ -31,7 +32,7 @@ class PostgresBrandManualRepo:
     def get(self, brand_id: str) -> Optional[BrandManual]:
         with connect() as conn:
             m = conn.execute(
-                "select categoria, tono, publico, estado from brand_manuals where id = %s",
+                "select nombre, categoria, tono, publico, estado from brand_manuals where id = %s",
                 (brand_id,),
             ).fetchone()
             if m is None:
@@ -42,21 +43,29 @@ class PostgresBrandManualRepo:
             ).fetchall()
         return BrandManual(
             id=brand_id,
-            parametros=BrandParameters(categoria=m[0], tono=m[1], publico=m[2]),
+            parametros=BrandParameters(nombre=m[0] or "", categoria=m[1], tono=m[2], publico=m[3]),
             reglas=[BrandRule(c, t, RuleType(tp), id=rid) for rid, c, t, tp in reglas],
-            estado=m[3],
+            estado=m[4],
         )
 
     def list_all(self) -> list[BrandSummary]:
         with connect() as conn:
             rows = conn.execute(
-                "select id, categoria, tono, publico, estado from brand_manuals"
+                "select id, nombre, categoria, tono, publico, estado from brand_manuals"
             ).fetchall()
         return [
             BrandSummary(
                 id=r[0],
-                parametros=BrandParameters(categoria=r[1], tono=r[2], publico=r[3]),
-                estado=r[4],
+                parametros=BrandParameters(nombre=r[1] or "", categoria=r[2], tono=r[3], publico=r[4]),
+                estado=r[5],
             )
             for r in rows
         ]
+
+    def nombre_taken(self, nombre: str) -> bool:
+        with connect() as conn:
+            row = conn.execute(
+                "select 1 from brand_manuals where lower(nombre) = lower(%s) limit 1",
+                (nombre.strip(),),
+            ).fetchone()
+        return row is not None

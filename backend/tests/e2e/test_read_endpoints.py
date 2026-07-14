@@ -37,7 +37,7 @@ def _seeded_brand_repo() -> InMemoryBrandManualRepo:
     repo.save(
         BrandManual(
             id="b1",
-            parametros=BrandParameters("Snack", "Divertido", "Gen Z"),
+            parametros=BrandParameters("Snack", "Divertido", "Gen Z", nombre="Quinua Pop"),
             reglas=[BrandRule("tono", "regla", RuleType.RECOMENDACION)],
         )
     )
@@ -65,6 +65,7 @@ def test_list_brands_returns_all(client):
     assert r.status_code == 200
     assert r.json()[0] == {
         "id": "b1",
+        "nombre": "Quinua Pop",
         "categoria": "Snack",
         "tono": "Divertido",
         "publico": "Gen Z",

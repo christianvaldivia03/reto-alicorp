@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Plus, Loader2, X } from 'lucide-react';
+import { Users, Plus, Loader2, X, Search } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
@@ -28,7 +28,14 @@ function UserManagementContent() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState<string | null>(null);
+  const [q, setQ] = useState('');
   const [form, setForm] = useState({ email: '', password: '', rol: Role.CREADOR as Role });
+
+  const filtered = users.filter(
+    (u) =>
+      u.email.toLowerCase().includes(q.toLowerCase()) ||
+      ROLE_LABELS[u.rol].toLowerCase().includes(q.toLowerCase()),
+  );
 
   const load = async () => {
     setLoading(true);
@@ -177,6 +184,24 @@ function UserManagementContent() {
         </Card>
       )}
 
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por correo o rol…"
+            aria-label="Buscar usuarios"
+            className="pl-9"
+          />
+        </div>
+        {!loading && (
+          <p className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
+            {filtered.length} de {users.length}
+          </p>
+        )}
+      </div>
+
       <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -202,8 +227,14 @@ function UserManagementContent() {
                     <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
                   </tr>
                 ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                    {users.length === 0 ? 'Aún no hay usuarios.' : 'Ningún usuario coincide con la búsqueda.'}
+                  </td>
+                </tr>
               ) : (
-                users.map((u) => (
+                filtered.map((u) => (
                   <tr key={u.id} className="transition-colors hover:bg-muted/40">
                     <td className="px-6 py-4 text-sm font-medium">{u.email}</td>
                     <td className="px-6 py-4">
@@ -228,11 +259,11 @@ function UserManagementContent() {
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
                           u.activo
-                            ? 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-800/60'
+                            ? 'bg-success/10 text-success-text ring-success/25'
                             : 'bg-muted text-muted-foreground ring-border'
                         }`}
                       >
-                        <span className={`size-1.5 rounded-full ${u.activo ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+                        <span className={`size-1.5 rounded-full ${u.activo ? 'bg-success' : 'bg-muted-foreground'}`} />
                         {u.activo ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>

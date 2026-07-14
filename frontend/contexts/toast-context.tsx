@@ -32,11 +32,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            role="status"
+            role={t.type === 'error' ? 'alert' : 'status'}
+            aria-live={t.type === 'error' ? 'assertive' : 'polite'}
             className={`px-4 py-3 rounded-lg shadow-lg text-sm font-medium border ${
               t.type === 'success'
-                ? 'bg-emerald-600 text-white border-emerald-700'
-                : 'bg-red-600 text-white border-red-700'
+                ? 'bg-success text-success-foreground border-success/70'
+                : 'bg-destructive text-destructive-foreground border-destructive/70'
             }`}
           >
             {t.message}

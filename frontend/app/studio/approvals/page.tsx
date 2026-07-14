@@ -1,20 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ClipboardCheck, Check, X, Inbox } from 'lucide-react';
+import Link from 'next/link';
+import { ClipboardCheck, Check, X, Inbox, Search, Tag, User, Clock, ExternalLink } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
+import { StatusBadge } from '@/components/ui-custom/status-badge';
 import { PageHeader } from '@/components/ui-custom/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/input';
+import { Input, Textarea } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { SkeletonCard } from '@/components/ui/skeleton';
-import { contentApi } from '@/lib/api';
+import { brandApi, contentApi } from '@/lib/api';
 import { useToast } from '@/contexts/toast-context';
 import { ContentStatus, Role } from '@/lib/types';
 import type { Content } from '@/lib/types';
+
+// Etiqueta legible del tipo de activo generado.
+const TIPO_LABELS: Record<string, string> = {
+  DESCRIPCION: 'Descripción',
+  GUION: 'Guion',
+  PROMPT_IMAGEN: 'Prompt de imagen',
+};
 
 function ApprovalQueueContent() {
   const toast = useToast();
@@ -25,6 +34,21 @@ function ApprovalQueueContent() {
   const [selected, setSelected] = useState<Content | null>(null);
   const [showReject, setShowReject] = useState(false);
   const [motivo, setMotivo] = useState('');
+  const [q, setQ] = useState('');
+  // Mapa brand_id -> nombre legible: la cola muestra a qué marca pertenece cada
+  // solicitud sin exponer el ID interno.
+  const [brandNames, setBrandNames] = useState<Record<string, string>>({});
+  const brandName = (id: string) => brandNames[id] ?? id;
+
+  const filtered = queue.filter((c) => {
+    const term = q.toLowerCase();
+    return (
+      c.texto.toLowerCase().includes(term) ||
+      c.tipo.toLowerCase().includes(term) ||
+      (c.creator_email ?? c.created_by ?? '').toLowerCase().includes(term) ||
+      brandName(c.brand_id).toLowerCase().includes(term)
+    );
+  });
 
   const load = async () => {
     setLoading(true);
@@ -41,6 +65,13 @@ function ApprovalQueueContent() {
 
   useEffect(() => {
     load();
+    // Nombres de marca en paralelo; si falla, la cola cae al brand_id.
+    brandApi
+      .list()
+      .then((bs) =>
+        setBrandNames(Object.fromEntries(bs.map((b) => [b.id, b.nombre || b.categoria]))),
+      )
+      .catch(() => {});
   }, []);
 
   const handleApprove = async () => {
@@ -96,23 +127,35 @@ function ApprovalQueueContent() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Lista */}
         <div className="lg:col-span-1">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Pendientes ({queue.length})
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Pendientes (<span className="tabular-nums">{queue.length}</span>)
           </h2>
+          <div className="relative mb-4">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por texto, tipo o autor…"
+              aria-label="Buscar en la cola"
+              className="pl-9"
+            />
+          </div>
           {loading ? (
             <div className="space-y-2">
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
             </div>
-          ) : queue.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center rounded-xl border border-dashed border-border py-10 text-center">
               <Inbox className="mb-2 size-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No hay contenido pendiente.</p>
+              <p className="text-sm text-muted-foreground">
+                {queue.length === 0 ? 'No hay contenido pendiente.' : 'Nada coincide con la búsqueda.'}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {queue.map((item) => (
+              {filtered.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setSelected(item)}
@@ -122,10 +165,29 @@ function ApprovalQueueContent() {
                       : 'border-border hover:border-brand/40 hover:bg-accent/50'
                   }`}
                 >
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand">
-                    {item.tipo}
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 truncate text-xs font-semibold text-foreground">
+                      <Tag className="size-3 flex-shrink-0 text-brand" />
+                      {brandName(item.brand_id)}
+                    </span>
+                    <StatusBadge status={item.estado} />
+                  </div>
+                  <p className="mb-1 text-[0.7rem] font-semibold uppercase tracking-wide text-brand">
+                    {TIPO_LABELS[item.tipo] ?? item.tipo}
                   </p>
                   <p className="line-clamp-2 text-sm text-foreground">{item.texto}</p>
+                  <p className="mt-1.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                    <User className="size-3 flex-shrink-0" />
+                    {item.creator_email ?? item.created_by ?? 'Desconocido'}
+                    {item.created_at && (
+                      <>
+                        <span className="opacity-50">·</span>
+                        <span className="tabular-nums">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </span>
+                      </>
+                    )}
+                  </p>
                 </button>
               ))}
             </div>
@@ -137,15 +199,35 @@ function ApprovalQueueContent() {
           {selected ? (
             <Card className="space-y-6 p-6">
               <div>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand-text ring-1 ring-inset ring-brand/20">
+                    <Tag className="size-3.5" />
+                    {brandName(selected.brand_id)}
+                  </span>
+                  <StatusBadge status={selected.estado} />
+                  <Link
+                    href={`/studio/history?brand=${selected.brand_id}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-brand-text"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    Abrir marca
+                  </Link>
+                </div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand">
-                  {selected.tipo}
+                  {TIPO_LABELS[selected.tipo] ?? selected.tipo}
                 </p>
-                {(selected.created_by || selected.created_at) && (
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    {selected.created_by && <>Autor: {selected.created_by}</>}
-                    {selected.created_at && <> · {new Date(selected.created_at).toLocaleString()}</>}
-                  </p>
-                )}
+                <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <User className="size-3.5" />
+                    {selected.creator_email ?? selected.created_by ?? 'Desconocido'}
+                  </span>
+                  {selected.created_at && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="size-3.5" />
+                      {new Date(selected.created_at).toLocaleString()}
+                    </span>
+                  )}
+                </div>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">{selected.texto}</p>
               </div>
 
@@ -158,7 +240,7 @@ function ApprovalQueueContent() {
                     {selected.reglas_aplicadas.map((r, i) => (
                       <span
                         key={i}
-                        className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand ring-1 ring-inset ring-brand/20"
+                        className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand-text ring-1 ring-inset ring-brand/20"
                       >
                         {r}
                       </span>

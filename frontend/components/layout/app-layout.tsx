@@ -4,6 +4,7 @@ import { useState, ReactNode, type ComponentType } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  LayoutDashboard,
   Palette,
   Library,
   PenLine,
@@ -11,9 +12,11 @@ import {
   ScanEye,
   Users,
   Activity,
+  History,
   LogOut,
   Menu,
   X,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { Role } from '@/lib/types';
@@ -29,10 +32,14 @@ interface NavItem {
   icon: ComponentType<{ className?: string }>;
 }
 
+const ALL_ROLES = Object.values(Role);
+
 const NAV_ITEMS: NavItem[] = [
+  { label: 'Inicio', href: '/dashboard', roles: ALL_ROLES, icon: LayoutDashboard },
   { label: 'Marcas', href: '/studio/brand', roles: [Role.CREADOR], icon: Palette },
   { label: 'Marcas existentes', href: '/studio/brands', roles: [Role.CREADOR], icon: Library },
   { label: 'Generar contenido', href: '/studio/content', roles: [Role.CREADOR], icon: PenLine },
+  { label: 'Historial por marca', href: '/studio/history', roles: [Role.CREADOR], icon: History },
   { label: 'Cola de aprobación', href: '/studio/approvals', roles: [Role.APROBADOR_A], icon: ClipboardCheck },
   { label: 'Auditoría de imágenes', href: '/studio/audit', roles: [Role.APROBADOR_B], icon: ScanEye },
   { label: 'Usuarios', href: '/admin/users', roles: [Role.SUPERADMIN], icon: Users },
@@ -93,11 +100,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     aria-current={isActive ? 'page' : undefined}
                     className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-brand/10 text-brand'
+                        ? 'bg-brand/10 text-brand-text'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     }`}
                   >
-                    <Icon className={`size-[1.15rem] ${isActive ? 'text-brand' : ''}`} />
+                    <Icon className={`size-[1.15rem] ${isActive ? 'text-brand-text' : ''}`} />
                     {item.label}
                   </Link>
                 </li>
@@ -165,9 +172,24 @@ export function AppLayout({ children }: { children: ReactNode }) {
           >
             <Menu className="size-5" />
           </button>
-          <h1 className="text-sm font-semibold tracking-tight">
-            {PAGE_TITLES[pathname] ?? 'Content Suite'}
-          </h1>
+          <nav aria-label="Ruta de navegación" className="flex items-center gap-1.5 text-sm">
+            {pathname === '/dashboard' ? (
+              <span className="font-semibold tracking-tight">Inicio</span>
+            ) : (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Inicio
+                </Link>
+                <ChevronRight className="size-3.5 text-muted-foreground/60" aria-hidden />
+                <span className="font-semibold tracking-tight" aria-current="page">
+                  {PAGE_TITLES[pathname] ?? 'Content Suite'}
+                </span>
+              </>
+            )}
+          </nav>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
             <span className="hidden max-w-[16rem] truncate pl-2 text-sm text-muted-foreground sm:block">

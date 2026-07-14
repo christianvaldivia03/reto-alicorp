@@ -3,18 +3,18 @@ import { ContentStatus } from '@/lib/types';
 const CONFIG: Record<string, { label: string; className: string; dot: string }> = {
   [ContentStatus.PENDIENTE]: {
     label: 'Pendiente',
-    className: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-800/60',
-    dot: 'bg-amber-500',
+    className: 'bg-warning/10 text-warning-text ring-warning/25',
+    dot: 'bg-warning',
   },
   [ContentStatus.APROBADO]: {
     label: 'Aprobado',
-    className: 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-800/60',
-    dot: 'bg-emerald-500',
+    className: 'bg-success/10 text-success-text ring-success/25',
+    dot: 'bg-success',
   },
   [ContentStatus.RECHAZADO]: {
     label: 'Rechazado',
-    className: 'bg-red-50 text-red-800 ring-red-200 dark:bg-red-900/20 dark:text-red-300 dark:ring-red-800/60',
-    dot: 'bg-red-500',
+    className: 'bg-destructive/10 text-destructive-text ring-destructive/25',
+    dot: 'bg-destructive',
   },
 };
 

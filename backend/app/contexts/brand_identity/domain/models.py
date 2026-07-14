@@ -23,12 +23,15 @@ class BrandParameters:
     categoria: str
     tono: str
     publico: str
+    # Nombre legible y único de la marca. Obligatorio al crear (validado en el
+    # caso de uso); puede venir vacío al leer marcas antiguas sin nombre.
+    nombre: str = ""
     extras: dict[str, str] = field(default_factory=dict, compare=False)
 
     def __post_init__(self):
-        for nombre, valor in (("categoria", self.categoria), ("tono", self.tono), ("publico", self.publico)):
+        for campo, valor in (("categoria", self.categoria), ("tono", self.tono), ("publico", self.publico)):
             if not valor or not valor.strip():
-                raise DomainError(f"BrandParameters.{nombre} no puede estar vacío")
+                raise DomainError(f"BrandParameters.{campo} no puede estar vacío")
 
 
 @dataclass(frozen=True)

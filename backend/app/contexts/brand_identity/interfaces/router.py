@@ -33,6 +33,7 @@ router = APIRouter(prefix="/brands", tags=["brand-identity"])
 
 
 class CreateBrandIn(BaseModel):
+    nombre: str
     categoria: str
     tono: str
     publico: str
@@ -59,16 +60,23 @@ class UpdateRuleIn(BaseModel):
 
 class BrandOut(BaseModel):
     id: str
+    nombre: str
     estado: str
     reglas: list[RuleOut]
 
     @staticmethod
     def of(m: BrandManual) -> "BrandOut":
-        return BrandOut(id=m.id, estado=m.estado, reglas=[RuleOut.of(r) for r in m.reglas])
+        return BrandOut(
+            id=m.id,
+            nombre=m.parametros.nombre,
+            estado=m.estado,
+            reglas=[RuleOut.of(r) for r in m.reglas],
+        )
 
 
 class BrandSummaryOut(BaseModel):
     id: str
+    nombre: str
     categoria: str
     tono: str
     publico: str
@@ -77,6 +85,7 @@ class BrandSummaryOut(BaseModel):
     def of(s: BrandSummary) -> "BrandSummaryOut":
         return BrandSummaryOut(
             id=s.id,
+            nombre=s.parametros.nombre,
             categoria=s.parametros.categoria,
             tono=s.parametros.tono,
             publico=s.parametros.publico,
@@ -102,7 +111,7 @@ def create_brand(
     body: CreateBrandIn, uc: GenerateBrandManual = Depends(get_generate_manual)
 ) -> BrandOut:
     try:
-        manual = uc.execute(body.categoria, body.tono, body.publico, extras=body.extras)
+        manual = uc.execute(body.nombre, body.categoria, body.tono, body.publico, extras=body.extras)
     except DomainError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return BrandOut.of(manual)

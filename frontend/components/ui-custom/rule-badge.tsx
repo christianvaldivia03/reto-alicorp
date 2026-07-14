@@ -3,15 +3,15 @@ import { RuleType } from '@/lib/types';
 const CONFIG: Record<string, { label: string; className: string }> = {
   [RuleType.PROHIBICION]: {
     label: 'Prohibición',
-    className: 'bg-red-50 text-red-800 ring-red-200 dark:bg-red-900/20 dark:text-red-300 dark:ring-red-800/60',
+    className: 'bg-destructive/10 text-destructive-text ring-destructive/25',
   },
   [RuleType.OBLIGACION]: {
     label: 'Obligación',
-    className: 'bg-blue-50 text-blue-800 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-800/60',
+    className: 'bg-brand/10 text-brand-text ring-brand/25',
   },
   [RuleType.RECOMENDACION]: {
     label: 'Recomendación',
-    className: 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-800/60',
+    className: 'bg-success/10 text-success-text ring-success/25',
   },
 };
 

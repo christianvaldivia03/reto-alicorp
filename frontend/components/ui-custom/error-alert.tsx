@@ -5,11 +5,16 @@ interface ErrorAlertProps {
 
 export function ErrorAlert({ message, onDismiss }: ErrorAlertProps) {
   return (
-    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4"
+    >
       <svg
-        className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+        className="mt-0.5 h-5 w-5 flex-shrink-0 text-destructive"
         fill="currentColor"
         viewBox="0 0 20 20"
+        aria-hidden="true"
       >
         <path
           fillRule="evenodd"
@@ -18,14 +23,15 @@ export function ErrorAlert({ message, onDismiss }: ErrorAlertProps) {
         />
       </svg>
       <div className="flex-1">
-        <p className="text-sm font-medium text-red-800 dark:text-red-300">{message}</p>
+        <p className="text-sm font-medium text-destructive">{message}</p>
       </div>
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="text-red-400 hover:text-red-500 dark:hover:text-red-300"
+          aria-label="Descartar error"
+          className="cursor-pointer text-destructive/70 transition-colors hover:text-destructive"
         >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
             <path
               fillRule="evenodd"
               d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"

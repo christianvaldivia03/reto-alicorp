@@ -20,6 +20,9 @@ class AuditReport:
     veredicto: Verdict
     motivo: str
     reglas_evaluadas: list[str] = field(default_factory=list)
+    actor_id: str | None = None  # Aprobador B que ejecutó la auditoría
+    actor_email: str | None = None  # denormalizado al leer (display)
+    created_at: str | None = None  # ISO 8601; lo fija la BD, se lee de vuelta
 
     def __post_init__(self):
         # Si no cumple, debe explicar por qué (requisito del reto).

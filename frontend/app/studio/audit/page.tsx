@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ScanEye, UploadCloud, CheckCircle2, XCircle, Loader2, History, ImageOff } from 'lucide-react';
+import Link from 'next/link';
+import { ScanEye, UploadCloud, CheckCircle2, XCircle, Loader2, History, ImageOff, Tag, User, ExternalLink } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
@@ -9,11 +10,18 @@ import { StatusBadge } from '@/components/ui-custom/status-badge';
 import { PageHeader } from '@/components/ui-custom/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/input';
 import { SkeletonCard } from '@/components/ui/skeleton';
-import { ApiError, contentApi } from '@/lib/api';
+import { ApiError, brandApi, contentApi } from '@/lib/api';
 import { useToast } from '@/contexts/toast-context';
 import { Role, Verdict } from '@/lib/types';
 import type { AuditReport, Content } from '@/lib/types';
+
+const TIPO_LABELS: Record<string, string> = {
+  DESCRIPCION: 'Descripción',
+  GUION: 'Guion',
+  PROMPT_IMAGEN: 'Prompt de imagen',
+};
 
 function AuditContent() {
   const toast = useToast();
@@ -26,6 +34,13 @@ function AuditContent() {
   const [selected, setSelected] = useState<Content | null>(null);
   const [report, setReport] = useState<AuditReport | null>(null);
   const [history, setHistory] = useState<AuditReport[]>([]);
+  const [verdictFilter, setVerdictFilter] = useState<'ALL' | Verdict>('ALL');
+  const [brandNames, setBrandNames] = useState<Record<string, string>>({});
+  const brandName = (id: string) => brandNames[id] ?? id;
+
+  const visibleHistory = history.filter(
+    (h) => verdictFilter === 'ALL' || h.veredicto === verdictFilter,
+  );
 
   const loadHistory = (id: string) =>
     contentApi
@@ -52,6 +67,12 @@ function AuditContent() {
 
   useEffect(() => {
     loadItems().finally(() => setLoading(false));
+    brandApi
+      .list()
+      .then((bs) =>
+        setBrandNames(Object.fromEntries(bs.map((b) => [b.id, b.nombre || b.categoria]))),
+      )
+      .catch(() => {});
   }, []);
 
   const auditFile = async (file: File) => {
@@ -141,11 +162,15 @@ function AuditContent() {
                   }`}
                 >
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-brand">
-                      {item.tipo}
+                    <span className="inline-flex items-center gap-1 truncate text-xs font-semibold text-foreground">
+                      <Tag className="size-3 flex-shrink-0 text-brand" />
+                      {brandName(item.brand_id)}
                     </span>
                     <StatusBadge status={item.estado} />
                   </div>
+                  <p className="mb-1 text-[0.7rem] font-semibold uppercase tracking-wide text-brand">
+                    {TIPO_LABELS[item.tipo] ?? item.tipo}
+                  </p>
                   <p className="line-clamp-2 text-sm">{item.texto}</p>
                 </button>
               ))}
@@ -162,6 +187,23 @@ function AuditContent() {
             </div>
           ) : (
             <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand-text ring-1 ring-inset ring-brand/20">
+                  <Tag className="size-3.5" />
+                  {brandName(selected.brand_id)}
+                </span>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {TIPO_LABELS[selected.tipo] ?? selected.tipo}
+                </span>
+                <StatusBadge status={selected.estado} />
+                <Link
+                  href={`/studio/history?brand=${selected.brand_id}`}
+                  className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-brand-text"
+                >
+                  <ExternalLink className="size-3.5" />
+                  Abrir marca
+                </Link>
+              </div>
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -207,15 +249,15 @@ function AuditContent() {
                 <div
                   className={`rounded-2xl border p-6 ${
                     cumple
-                      ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-900/20'
-                      : 'border-red-200 bg-red-50 dark:border-red-800/60 dark:bg-red-900/20'
+                      ? 'border-success/30 bg-success/10'
+                      : 'border-destructive/30 bg-destructive/10'
                   }`}
                 >
                   <div className="mb-3 flex items-center gap-3">
                     {cumple ? (
-                      <CheckCircle2 className="size-8 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="size-8 text-success" />
                     ) : (
-                      <XCircle className="size-8 text-red-600 dark:text-red-400" />
+                      <XCircle className="size-8 text-destructive" />
                     )}
                     <p className="text-lg font-bold">
                       {cumple ? 'Cumple con el manual' : 'No cumple'}
@@ -249,27 +291,63 @@ function AuditContent() {
 
               {history.length > 0 && (
                 <Card className="p-6">
-                  <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <History className="size-4" />
-                    Historial de auditorías ({history.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {history.map((h) => (
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <History className="size-4" />
+                      Historial de auditorías ({visibleHistory.length}/{history.length})
+                    </h3>
+                    <Select
+                      value={verdictFilter}
+                      onChange={(e) => setVerdictFilter(e.target.value as 'ALL' | Verdict)}
+                      aria-label="Filtrar por resultado"
+                      className="h-8 w-auto text-xs"
+                    >
+                      <option value="ALL">Todos los resultados</option>
+                      <option value={Verdict.CUMPLE}>Cumple</option>
+                      <option value={Verdict.NO_CUMPLE}>No cumple</option>
+                    </Select>
+                  </div>
+                  <div className="space-y-3">
+                    {visibleHistory.map((h) => (
                       <div
                         key={h.id}
-                        className="flex items-center gap-2 border-b border-border/60 pb-2 text-sm last:border-0"
+                        className="border-b border-border/60 pb-3 text-sm last:border-0"
                       >
-                        {h.veredicto === Verdict.CUMPLE ? (
-                          <CheckCircle2 className="size-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <XCircle className="size-4 flex-shrink-0 text-red-600 dark:text-red-400" />
+                        <div className="flex items-center gap-2">
+                          {h.veredicto === Verdict.CUMPLE ? (
+                            <CheckCircle2 className="size-4 flex-shrink-0 text-success" />
+                          ) : (
+                            <XCircle className="size-4 flex-shrink-0 text-destructive" />
+                          )}
+                          <span className="font-medium">
+                            {h.veredicto === Verdict.CUMPLE ? 'Cumple' : 'No cumple'}
+                          </span>
+                          {h.created_at && (
+                            <span className="ml-auto whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                              {new Date(h.created_at).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 pl-6 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Tag className="size-3" />
+                            {brandName(h.brand_id)}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <User className="size-3" />
+                            {h.actor_email ?? 'Desconocido'}
+                          </span>
+                        </div>
+                        {h.motivo && (
+                          <p className="mt-1 pl-6 text-xs text-muted-foreground">{h.motivo}</p>
                         )}
-                        <span className="font-medium">
-                          {h.veredicto === Verdict.CUMPLE ? 'Cumple' : 'No cumple'}
-                        </span>
-                        {h.motivo && <span className="truncate text-muted-foreground">— {h.motivo}</span>}
                       </div>
                     ))}
+                    {visibleHistory.length === 0 && (
+                      <p className="py-4 text-center text-xs text-muted-foreground">
+                        Ninguna auditoría coincide con el filtro.
+                      </p>
+                    )}
                   </div>
                 </Card>
               )}

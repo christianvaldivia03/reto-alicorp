@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Library, ChevronDown, Plus, Pencil, Check, X, Loader2, Trash2 } from 'lucide-react';
+import { Library, Plus, Pencil, Check, X, Loader2, Trash2, BookText, ChevronRight, History } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
@@ -75,22 +75,24 @@ function RuleFields({
   );
 }
 
-// Regla del manual con edición inline. Al guardar, el backend recalcula el
-// embedding para que el RAG siga coherente.
+// Regla con edición y borrado inline (confirmación en la propia fila, sin
+// diálogo anidado). Al guardar, el backend recalcula el embedding (RAG).
 function EditableRule({
   brandId,
   rule,
   onSaved,
-  onRequestDelete,
+  onDelete,
 }: {
   brandId: string;
   rule: BrandRule;
   onSaved: (updated: BrandRule) => void;
-  onRequestDelete: (rule: BrandRule) => void;
+  onDelete: (ruleId: number) => Promise<void>;
 }) {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ categoria: rule.categoria, texto: rule.texto, tipo: rule.tipo });
 
@@ -119,6 +121,18 @@ function EditableRule({
       setError(err instanceof Error ? err.message : 'No se pudo actualizar la regla');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!rule.id) return;
+    setDeleting(true);
+    try {
+      await onDelete(rule.id);
+      // El padre quita la fila; no hace falta limpiar estado aquí.
+    } finally {
+      setDeleting(false);
+      setConfirming(false);
     }
   };
 
@@ -151,22 +165,22 @@ function EditableRule({
   }
 
   return (
-    <div className="rounded-xl border border-border/70 bg-background p-3.5">
+    <div className="rounded-xl border border-border/70 bg-background p-3.5 transition-colors hover:border-border">
       <div className="mb-1.5 flex items-center gap-2">
         <RuleTypeBadge tipo={rule.tipo} />
         <span className="text-xs text-muted-foreground">{rule.categoria}</span>
-        {canEdit && (
+        {canEdit && !confirming && (
           <div className="ml-auto flex items-center gap-0.5">
             <button
               onClick={start}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-brand"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-brand-text"
               aria-label="Editar regla"
             >
               <Pencil className="size-3.5" />
               Editar
             </button>
             <button
-              onClick={() => onRequestDelete(rule)}
+              onClick={() => setConfirming(true)}
               className="inline-flex cursor-pointer items-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               aria-label="Eliminar regla"
             >
@@ -176,6 +190,18 @@ function EditableRule({
         )}
       </div>
       <p className="text-sm leading-relaxed">{rule.texto}</p>
+      {confirming && (
+        <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3">
+          <span className="mr-auto text-xs text-muted-foreground">¿Eliminar esta regla?</span>
+          <Button size="sm" variant="danger" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+            Eliminar
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={deleting}>
+            Cancelar
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -245,17 +271,59 @@ function AddRuleForm({
   );
 }
 
+// Tarjeta de marca: altura uniforme (la info de reglas vive en un modal, no
+// crece la tarjeta). Jerarquía: avatar + categoría > tono/público > acción.
+function BrandCard({ brand, onOpen }: { brand: BrandSummary; onOpen: () => void }) {
+  const displayName = brand.nombre || brand.categoria;
+  return (
+    <Card className="flex flex-col p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-lg">
+      <div className="flex items-start gap-3">
+        <span className="flex size-11 flex-shrink-0 items-center justify-center rounded-xl bg-brand/10 text-sm font-semibold uppercase text-brand-text">
+          {displayName.slice(0, 2)}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate font-semibold leading-tight">{displayName}</p>
+          <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+            {brand.categoria} · {brand.tono} · {brand.publico}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-2 border-t border-border/70 pt-3">
+        <Button variant="outline" size="sm" onClick={onOpen} className="w-full justify-between">
+          <span className="inline-flex items-center gap-1.5">
+            <BookText className="size-3.5" />
+            Ver y editar reglas
+          </span>
+          <ChevronRight className="size-3.5 opacity-60" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          nativeButton={false}
+          render={<Link href={`/studio/history?brand=${brand.id}`} />}
+          className="w-full justify-between"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <History className="size-3.5" />
+            Ver historial
+          </span>
+          <ChevronRight className="size-3.5 opacity-60" />
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function BrandsListContent() {
   const toast = useToast();
   const [brands, setBrands] = useState<BrandSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<BrandManual | null>(null);
+  // Marca abierta en el modal + su manual cargado.
+  const [active, setActive] = useState<BrandSummary | null>(null);
+  const [manual, setManual] = useState<BrandManual | null>(null);
   const [loadingRules, setLoadingRules] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<BrandRule | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -272,60 +340,52 @@ function BrandsListContent() {
     load();
   }, []);
 
-  const toggleRules = async (id: string) => {
+  const openBrand = async (brand: BrandSummary) => {
+    setActive(brand);
+    setManual(null);
     setAdding(false);
-    if (expandedId === id) {
-      setExpandedId(null);
-      setExpanded(null);
-      return;
-    }
-    setExpandedId(id);
-    setExpanded(null);
     setLoadingRules(true);
     try {
-      setExpanded(await brandApi.get(id));
+      setManual(await brandApi.get(brand.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar las reglas');
-      setExpandedId(null);
+      toast(err instanceof Error ? err.message : 'No se pudieron cargar las reglas', 'error');
+      setActive(null);
     } finally {
       setLoadingRules(false);
     }
   };
 
-  const handleRuleSaved = (updated: BrandRule) => {
-    setExpanded((prev) =>
-      prev
-        ? { ...prev, reglas: prev.reglas.map((r) => (r.id === updated.id ? updated : r)) }
-        : prev,
-    );
-  };
-
-  const handleRuleAdded = (rule: BrandRule) => {
-    setExpanded((prev) => (prev ? { ...prev, reglas: [...prev.reglas, rule] } : prev));
+  const closeBrand = () => {
+    setActive(null);
+    setManual(null);
     setAdding(false);
   };
 
-  const handleDelete = async () => {
-    if (!confirmDelete?.id || !expandedId) return;
-    setDeleting(true);
-    setError(null);
+  const handleRuleSaved = (updated: BrandRule) =>
+    setManual((prev) =>
+      prev ? { ...prev, reglas: prev.reglas.map((r) => (r.id === updated.id ? updated : r)) } : prev,
+    );
+
+  const handleRuleAdded = (rule: BrandRule) => {
+    setManual((prev) => (prev ? { ...prev, reglas: [...prev.reglas, rule] } : prev));
+    setAdding(false);
+  };
+
+  const deleteRule = async (ruleId: number) => {
+    if (!active) return;
     try {
-      await brandApi.deleteRule(expandedId, confirmDelete.id);
-      setExpanded((prev) =>
-        prev ? { ...prev, reglas: prev.reglas.filter((r) => r.id !== confirmDelete.id) } : prev,
-      );
+      await brandApi.deleteRule(active.id, ruleId);
+      setManual((prev) => (prev ? { ...prev, reglas: prev.reglas.filter((r) => r.id !== ruleId) } : prev));
       toast('Regla eliminada');
-      setConfirmDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar la regla');
-      setConfirmDelete(null);
-    } finally {
-      setDeleting(false);
+      toast(err instanceof Error ? err.message : 'No se pudo eliminar la regla', 'error');
     }
   };
 
+  const ruleCount = manual?.reglas.length ?? 0;
+
   return (
-    <div className="mx-auto max-w-5xl p-4 md:p-6 lg:p-8">
+    <div className="mx-auto max-w-6xl p-4 md:p-6 lg:p-8">
       <PageHeader
         icon={Library}
         title="Marcas existentes"
@@ -345,8 +405,7 @@ function BrandsListContent() {
       )}
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SkeletonCard />
+        <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />
@@ -360,91 +419,67 @@ function BrandsListContent() {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        // items-start: cada tarjeta conserva su altura natural, sin estirarse
+        // para igualar a la más alta de la fila.
+        <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {brands.map((b) => (
-            <Card key={b.id} className="p-4">
-              <p className="font-semibold">{b.categoria}</p>
-              <p className="mb-3 text-sm text-muted-foreground">
-                {b.tono} · {b.publico}
-              </p>
-              <button
-                onClick={() => toggleRules(b.id)}
-                className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-brand hover:underline"
-              >
-                {expandedId === b.id ? 'Ocultar reglas' : 'Ver reglas'}
-                <ChevronDown
-                  className={`size-4 transition-transform ${expandedId === b.id ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {expandedId === b.id && (
-                <div className="mt-3 space-y-2">
-                  {loadingRules ? (
-                    <>
-                      <Skeleton className="h-12 w-full" />
-                      <Skeleton className="h-12 w-full" />
-                    </>
-                  ) : (
-                    <>
-                      {expanded?.reglas.map((rule, i) => (
-                        <EditableRule
-                          key={rule.id ?? i}
-                          brandId={b.id}
-                          rule={rule}
-                          onSaved={handleRuleSaved}
-                          onRequestDelete={setConfirmDelete}
-                        />
-                      ))}
-
-                      {adding ? (
-                        <AddRuleForm
-                          brandId={b.id}
-                          onAdded={handleRuleAdded}
-                          onCancel={() => setAdding(false)}
-                        />
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setAdding(true)}
-                          className="w-full"
-                        >
-                          <Plus />
-                          Añadir regla
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </Card>
+            <BrandCard key={b.id} brand={b} onOpen={() => openBrand(b)} />
           ))}
         </div>
       )}
 
+      {/* Panel de reglas: la tarjeta ya no crece; el detalle vive aquí. */}
       <Dialog
-        open={!!confirmDelete}
-        onClose={() => setConfirmDelete(null)}
-        title="Eliminar regla"
-        description="Esta acción no se puede deshacer. La regla se quita del manual y del RAG."
+        open={!!active}
+        onClose={closeBrand}
+        title={active ? active.nombre || active.categoria : 'Reglas'}
+        description={active ? `${active.categoria} · ${active.tono} · ${active.publico}` : undefined}
+        className="max-w-2xl max-h-[85vh] overflow-y-auto"
       >
-        {confirmDelete && (
-          <p className="mb-5 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-            “{confirmDelete.texto}”
-          </p>
-        )}
-        <div className="flex gap-3">
-          <Button variant="danger" onClick={handleDelete} disabled={deleting} className="flex-1">
-            {deleting ? 'Eliminando…' : 'Eliminar'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setConfirmDelete(null)}
-            disabled={deleting}
-            className="flex-1"
-          >
-            Cancelar
-          </Button>
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {loadingRules ? 'Cargando…' : `${ruleCount} regla${ruleCount === 1 ? '' : 's'}`}
+          </span>
+          {!loadingRules && !adding && (
+            <Button size="sm" variant="brand" onClick={() => setAdding(true)}>
+              <Plus />
+              Añadir regla
+            </Button>
+          )}
         </div>
+
+        {loadingRules ? (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {adding && active && (
+              <AddRuleForm
+                brandId={active.id}
+                onAdded={handleRuleAdded}
+                onCancel={() => setAdding(false)}
+              />
+            )}
+            {active &&
+              manual?.reglas.map((rule, i) => (
+                <EditableRule
+                  key={rule.id ?? i}
+                  brandId={active.id}
+                  rule={rule}
+                  onSaved={handleRuleSaved}
+                  onDelete={deleteRule}
+                />
+              ))}
+            {manual && manual.reglas.length === 0 && !adding && (
+              <p className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                Este manual aún no tiene reglas. Añade la primera.
+              </p>
+            )}
+          </div>
+        )}
       </Dialog>
     </div>
   );

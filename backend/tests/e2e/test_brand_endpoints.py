@@ -47,20 +47,34 @@ client = TestClient(app)
 
 
 def test_create_brand_returns_manual():
-    r = client.post("/brands", json={"categoria": "Snack", "tono": "Divertido", "publico": "Gen Z"})
+    r = client.post(
+        "/brands",
+        json={"nombre": "Quinua Pop", "categoria": "Snack", "tono": "Divertido", "publico": "Gen Z"},
+    )
     assert r.status_code == 201
     body = r.json()
     assert body["id"] == "brand-e2e"
+    assert body["nombre"] == "Quinua Pop"
     assert len(body["reglas"]) == 2
 
 
 def test_create_brand_rejects_empty_field():
-    r = client.post("/brands", json={"categoria": "", "tono": "X", "publico": "Y"})
+    r = client.post(
+        "/brands", json={"nombre": "Marca", "categoria": "", "tono": "X", "publico": "Y"}
+    )
+    assert r.status_code == 422
+
+
+def test_create_brand_requires_nombre():
+    r = client.post("/brands", json={"categoria": "Snack", "tono": "X", "publico": "Y"})
     assert r.status_code == 422
 
 
 def test_get_rules_retrieves_indexed_rule():
-    client.post("/brands", json={"categoria": "Snack", "tono": "Divertido", "publico": "Gen Z"})
+    client.post(
+        "/brands",
+        json={"nombre": "Quinua Pop", "categoria": "Snack", "tono": "Divertido", "publico": "Gen Z"},
+    )
     r = client.get("/brands/brand-e2e/rules", params={"query": "puedo usar tecnicismos?", "k": 1})
     assert r.status_code == 200
     rules = r.json()

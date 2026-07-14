@@ -6,12 +6,20 @@ from app.contexts.governance.domain.models import AuditReport, Verdict
 from app.shared.db import connect
 
 
+# Lectura con email del auditor (LEFT JOIN users) y fecha para la vista.
+_COLS = (
+    "r.id, r.content_id, r.brand_id, r.veredicto, r.motivo, r.reglas_evaluadas, "
+    "r.actor_id, u.email, r.created_at"
+)
+_FROM = "from audit_reports r left join users u on u.id = r.actor_id"
+
+
 class PostgresAuditReportRepo:
     def save(self, report: AuditReport) -> None:
         with connect() as conn:
             conn.execute(
-                "insert into audit_reports(id, content_id, brand_id, veredicto, motivo, reglas_evaluadas) "
-                "values (%s, %s, %s, %s, %s, %s)",
+                "insert into audit_reports(id, content_id, brand_id, veredicto, motivo, reglas_evaluadas, actor_id) "
+                "values (%s, %s, %s, %s, %s, %s, %s)",
                 (
                     report.id,
                     report.content_id,
@@ -19,6 +27,7 @@ class PostgresAuditReportRepo:
                     report.veredicto.value,
                     report.motivo,
                     json.dumps(report.reglas_evaluadas),
+                    report.actor_id,
                 ),
             )
             conn.commit()
@@ -26,8 +35,7 @@ class PostgresAuditReportRepo:
     def get(self, report_id: str) -> Optional[AuditReport]:
         with connect() as conn:
             row = conn.execute(
-                "select id, content_id, brand_id, veredicto, motivo, reglas_evaluadas "
-                "from audit_reports where id = %s",
+                f"select {_COLS} {_FROM} where r.id = %s",
                 (report_id,),
             ).fetchone()
         if row is None:
@@ -37,8 +45,7 @@ class PostgresAuditReportRepo:
     def list_for_content(self, content_id: str) -> list[AuditReport]:
         with connect() as conn:
             rows = conn.execute(
-                "select id, content_id, brand_id, veredicto, motivo, reglas_evaluadas "
-                "from audit_reports where content_id = %s order by created_at desc",
+                f"select {_COLS} {_FROM} where r.content_id = %s order by r.created_at desc",
                 (content_id,),
             ).fetchall()
         return [self._row_to_report(r) for r in rows]
@@ -46,6 +53,7 @@ class PostgresAuditReportRepo:
     @staticmethod
     def _row_to_report(row) -> AuditReport:
         reglas = row[5] if isinstance(row[5], list) else json.loads(row[5])
+        created_at = row[8].isoformat() if row[8] is not None else None
         return AuditReport(
             id=row[0],
             content_id=row[1],
@@ -53,4 +61,7 @@ class PostgresAuditReportRepo:
             veredicto=Verdict(row[3]),
             motivo=row[4] or "",
             reglas_evaluadas=reglas,
+            actor_id=row[6],
+            actor_email=row[7],
+            created_at=created_at,
         )

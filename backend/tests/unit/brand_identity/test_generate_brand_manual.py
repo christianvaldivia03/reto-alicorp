@@ -29,9 +29,10 @@ def test_generate_brand_manual_persists_and_indexes():
     repo = InMemoryBrandManualRepo()
     uc = GenerateBrandManual(llm=llm, vector_store=store, repo=repo, id_factory=lambda: "brand-1")
 
-    manual = uc.execute(categoria="Snack de quinua", tono="Divertido", publico="Gen Z")
+    manual = uc.execute(nombre="Quinua Pop", categoria="Snack de quinua", tono="Divertido", publico="Gen Z")
 
     assert manual.id == "brand-1"
+    assert manual.parametros.nombre == "Quinua Pop"
     assert len(manual.reglas) == 2
     assert repo.get("brand-1") is manual          # persistido
     assert store.index_calls == ["brand-1"]        # indexado en el vector store
@@ -56,7 +57,7 @@ def test_generate_passes_extras_to_llm():
         llm=llm, vector_store=InMemoryVectorStore(),
         repo=InMemoryBrandManualRepo(), id_factory=lambda: "brand-1",
     )
-    uc.execute("Snack", "Divertido", "Gen Z", extras={"Canal": "TikTok"})
+    uc.execute("Marca X", "Snack", "Divertido", "Gen Z", extras={"Canal": "TikTok"})
     assert "Canal: TikTok" in llm.calls[0]
 
 
@@ -67,5 +68,29 @@ def test_generate_rejects_invalid_params_without_calling_llm():
         repo=InMemoryBrandManualRepo(), id_factory=lambda: "brand-1",
     )
     with pytest.raises(DomainError):
-        uc.execute(categoria="", tono="Divertido", publico="Gen Z")
+        uc.execute(nombre="Marca X", categoria="", tono="Divertido", publico="Gen Z")
     assert llm.calls == []   # el LLM nunca se invocó
+
+
+def test_generate_requires_nombre():
+    llm = FakeTextLlm(_LLM_JSON)
+    uc = GenerateBrandManual(
+        llm=llm, vector_store=InMemoryVectorStore(),
+        repo=InMemoryBrandManualRepo(), id_factory=lambda: "brand-1",
+    )
+    with pytest.raises(DomainError):
+        uc.execute(nombre="  ", categoria="Snack", tono="Divertido", publico="Gen Z")
+    assert llm.calls == []   # sin nombre no se llama al LLM
+
+
+def test_generate_rejects_duplicate_nombre():
+    """El nombre es único (case-insensitive)."""
+    llm = FakeTextLlm(_LLM_JSON)
+    repo = InMemoryBrandManualRepo()
+    store = InMemoryVectorStore()
+    ids = iter(["brand-1", "brand-2"])
+    uc = GenerateBrandManual(llm=llm, vector_store=store, repo=repo, id_factory=lambda: next(ids))
+
+    uc.execute(nombre="Quinua Pop", categoria="Snack", tono="Divertido", publico="Gen Z")
+    with pytest.raises(DomainError):
+        uc.execute(nombre="quinua pop", categoria="Otro", tono="Serio", publico="Adultos")

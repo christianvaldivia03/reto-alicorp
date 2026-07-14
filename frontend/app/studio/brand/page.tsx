@@ -36,7 +36,7 @@ function BrandStudioContent() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState<BrandManual | null>(null);
-  const [form, setForm] = useState({ categoria: '', tono: '', publico: '' });
+  const [form, setForm] = useState({ nombre: '', categoria: '', tono: '', publico: '' });
   // Parámetros dinámicos opcionales que el usuario puede añadir.
   const [extras, setExtras] = useState<Extra[]>([]);
 
@@ -58,14 +58,15 @@ function BrandStudioContent() {
     );
     try {
       const manual = await brandApi.create(
+        form.nombre.trim(),
         form.categoria.trim(),
         form.tono.trim(),
         form.publico.trim(),
         extrasObj,
       );
       setGenerated(manual);
-      toast(`Manual generado con ${manual.reglas.length} regla(s)`);
-      setForm({ categoria: '', tono: '', publico: '' });
+      toast(`Manual «${manual.nombre}» generado con ${manual.reglas.length} regla(s)`);
+      setForm({ nombre: '', categoria: '', tono: '', publico: '' });
       setExtras([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el manual');
@@ -74,7 +75,8 @@ function BrandStudioContent() {
     }
   };
 
-  const valid = form.categoria.trim() && form.tono.trim() && form.publico.trim();
+  const valid =
+    form.nombre.trim() && form.categoria.trim() && form.tono.trim() && form.publico.trim();
 
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6 lg:p-8">
@@ -109,7 +111,24 @@ function BrandStudioContent() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreate} className="space-y-4">
-                  <Field label="Categoría de producto" htmlFor="categoria">
+                  <Field
+                    label="Nombre de la marca"
+                    htmlFor="nombre"
+                    hint="Identificador único; se usará en aprobaciones, historial y auditoría."
+                  >
+                    <Input
+                      id="nombre"
+                      value={form.nombre}
+                      onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                      placeholder="Ej. Quinua Pop"
+                      required
+                    />
+                  </Field>
+                  <Field
+                    label="Categoría de producto"
+                    htmlFor="categoria"
+                    hint="Qué vende la marca."
+                  >
                     <Input
                       id="categoria"
                       value={form.categoria}
@@ -118,7 +137,7 @@ function BrandStudioContent() {
                       required
                     />
                   </Field>
-                  <Field label="Tono" htmlFor="tono">
+                  <Field label="Tono" htmlFor="tono" hint="Cómo comunica.">
                     <Input
                       id="tono"
                       value={form.tono}
@@ -127,7 +146,7 @@ function BrandStudioContent() {
                       required
                     />
                   </Field>
-                  <Field label="Público objetivo" htmlFor="publico">
+                  <Field label="Público objetivo" htmlFor="publico" hint="A quién le habla.">
                     <Input
                       id="publico"
                       value={form.publico}
@@ -137,32 +156,54 @@ function BrandStudioContent() {
                     />
                   </Field>
 
-                  {/* Parámetros dinámicos */}
+                  {/* Parámetros dinámicos: una tarjeta por atributo, Clave sobre Valor. */}
                   {extras.length > 0 && (
-                    <div className="space-y-2">
-                      <Label>Parámetros adicionales</Label>
+                    <div className="space-y-3">
+                      <Label className="mb-0">Atributos adicionales</Label>
                       {extras.map((x, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <Input
-                            value={x.label}
-                            onChange={(e) => updateExtra(i, 'label', e.target.value)}
-                            placeholder="Parámetro (ej. Región)"
-                            aria-label={`Nombre del parámetro ${i + 1}`}
-                          />
-                          <Input
-                            value={x.valor}
-                            onChange={(e) => updateExtra(i, 'valor', e.target.value)}
-                            placeholder="Valor (ej. Perú)"
-                            aria-label={`Valor del parámetro ${i + 1}`}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeExtra(i)}
-                            className="mt-1 inline-flex cursor-pointer items-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                            aria-label={`Quitar parámetro ${i + 1}`}
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
+                        <div
+                          key={i}
+                          className="reveal group rounded-xl border border-border/70 bg-muted/30 p-3.5 transition-colors focus-within:border-brand/50 focus-within:bg-brand/[0.03]"
+                          data-shown="true"
+                        >
+                          <div className="mb-2.5 flex items-center justify-between">
+                            <span className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Atributo {i + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeExtra(i)}
+                              className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-muted-foreground opacity-70 transition-colors hover:bg-destructive/10 hover:text-destructive hover:opacity-100"
+                              aria-label={`Quitar atributo ${i + 1}`}
+                            >
+                              <Trash2 className="size-3.5" />
+                              Quitar
+                            </button>
+                          </div>
+                          <div className="space-y-2.5">
+                            <div>
+                              <Label htmlFor={`extra-key-${i}`} className="mb-1 text-xs text-muted-foreground">
+                                Clave
+                              </Label>
+                              <Input
+                                id={`extra-key-${i}`}
+                                value={x.label}
+                                onChange={(e) => updateExtra(i, 'label', e.target.value)}
+                                placeholder="Ej. Personalidad"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`extra-val-${i}`} className="mb-1 text-xs text-muted-foreground">
+                                Valor
+                              </Label>
+                              <Input
+                                id={`extra-val-${i}`}
+                                value={x.valor}
+                                onChange={(e) => updateExtra(i, 'valor', e.target.value)}
+                                placeholder="Ej. Atrevida y optimista"
+                              />
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -170,7 +211,7 @@ function BrandStudioContent() {
 
                   <Button type="button" variant="outline" size="sm" onClick={addExtra} className="w-full">
                     <Plus />
-                    Añadir parámetro
+                    Añadir atributo
                   </Button>
 
                   <Button type="submit" size="xl" disabled={creating || !valid} className="w-full">
@@ -194,7 +235,7 @@ function BrandStudioContent() {
 
         {/* Resultado */}
         <div className="lg:col-span-3">
-          {generated && (
+          {generated ? (
             <Reveal>
               <Card>
                 <CardHeader>
@@ -210,6 +251,25 @@ function BrandStudioContent() {
                 </CardContent>
               </Card>
             </Reveal>
+          ) : (
+            // Placeholder para que la columna no quede vacía antes de generar.
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-10 text-center">
+              <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+                {creating ? (
+                  <Loader2 className="size-6 animate-spin" />
+                ) : (
+                  <Sparkles className="size-6" />
+                )}
+              </span>
+              <p className="text-sm font-medium">
+                {creating ? 'Generando el manual…' : 'El manual aparecerá aquí'}
+              </p>
+              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                {creating
+                  ? 'La IA está estructurando las reglas de marca.'
+                  : 'Completa las señales de marca y genera. La IA producirá un manual de reglas listo para el RAG.'}
+              </p>
+            </div>
           )}
         </div>
       </div>

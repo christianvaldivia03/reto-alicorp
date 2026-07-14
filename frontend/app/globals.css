@@ -26,12 +26,16 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-text: var(--destructive-text);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-text: var(--success-text);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-text: var(--warning-text);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-text: var(--brand-text);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -91,6 +95,13 @@
   --warning: oklch(0.75 0.15 75);
   --warning-foreground: oklch(0.26 0.05 70);
 
+  /* Texto semántico sobre tinte /10 — oscurecido para cumplir WCAG AA (≥4.5:1).
+     El bg/ring/dot siguen usando el token base; solo el texto usa estos. */
+  --brand-text: oklch(0.545 0.17 258);
+  --success-text: oklch(0.525 0.14 155);
+  --warning-text: oklch(0.555 0.14 75);
+  --destructive-text: oklch(0.565 0.2 25);
+
   --border: oklch(0.922 0.005 255);
   --input: oklch(0.922 0.005 255);
   --ring: oklch(0.55 0.19 258);
@@ -138,6 +149,10 @@
   --success-foreground: oklch(0.16 0.02 265);
   --warning: oklch(0.8 0.15 80);
   --warning-foreground: oklch(0.22 0.04 70);
+  --brand-text: oklch(0.71 0.17 258);
+  --success-text: oklch(0.715 0.14 155);
+  --warning-text: oklch(0.8 0.14 75);
+  --destructive-text: oklch(0.735 0.2 25);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.67 0.17 258);
@@ -182,6 +197,10 @@
     --success-foreground: oklch(0.16 0.02 265);
     --warning: oklch(0.8 0.15 80);
     --warning-foreground: oklch(0.22 0.04 70);
+    --brand-text: oklch(0.71 0.17 258);
+    --success-text: oklch(0.715 0.14 155);
+    --warning-text: oklch(0.8 0.14 75);
+    --destructive-text: oklch(0.735 0.2 25);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.67 0.17 258);

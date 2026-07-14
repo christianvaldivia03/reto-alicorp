@@ -25,6 +25,7 @@ class Content:
     motivo: str | None = None
     created_by: str | None = None  # id del Creador (autoría)
     created_at: str | None = None  # ISO 8601; lo fija la BD, se lee de vuelta
+    creator_email: str | None = None  # email del Creador; denormalizado al leer (display)
 
     def __post_init__(self):
         if not self.texto or not self.texto.strip():

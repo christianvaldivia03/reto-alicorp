@@ -108,6 +108,12 @@ class InMemoryBrandManualRepo:
             for m in self.store.values()
         ]
 
+    def nombre_taken(self, nombre: str) -> bool:
+        target = nombre.strip().lower()
+        return any(
+            (m.parametros.nombre or "").strip().lower() == target for m in self.store.values()
+        )
+
 
 class InMemoryContentRepo:
     def __init__(self):

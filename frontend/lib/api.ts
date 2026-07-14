@@ -120,6 +120,7 @@ export const brandApi = {
   get: (id: string): Promise<BrandManual> => request(`/brands/${id}`),
 
   create: (
+    nombre: string,
     categoria: string,
     tono: string,
     publico: string,
@@ -127,7 +128,7 @@ export const brandApi = {
   ): Promise<BrandManual> =>
     request('/brands', {
       method: 'POST',
-      body: JSON.stringify({ categoria, tono, publico, extras }),
+      body: JSON.stringify({ nombre, categoria, tono, publico, extras }),
     }),
 
   // Edita una regla; el backend recalcula su embedding (RAG).

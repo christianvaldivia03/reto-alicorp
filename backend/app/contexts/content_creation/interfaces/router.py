@@ -32,6 +32,7 @@ class ContentOut(BaseModel):
     reglas_aplicadas: list[str]
     created_by: str | None = None
     created_at: str | None = None
+    creator_email: str | None = None
 
     @staticmethod
     def of(c: Content) -> "ContentOut":
@@ -44,6 +45,7 @@ class ContentOut(BaseModel):
             reglas_aplicadas=c.reglas_aplicadas,
             created_by=c.created_by,
             created_at=c.created_at,
+            creator_email=c.creator_email,
         )
 
 
@@ -62,6 +64,7 @@ class ContentDetailOut(ContentOut):
             motivo=c.motivo,
             created_by=c.created_by,
             created_at=c.created_at,
+            creator_email=c.creator_email,
         )
 
 
