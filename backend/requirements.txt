@@ -7,6 +7,7 @@ pydantic-settings==2.7.1
 groq==0.13.1
 httpx==0.28.1            # cliente de embeddings Gemini (REST) y dependencia de FastAPI TestClient
 psycopg[binary]==3.2.3
+psycopg_pool==3.2.4      # pool de conexiones: reutiliza conexiones a Supabase (evita ~2s de handshake por request)
 pgvector==0.3.6
 
 # Fase 3 — Identidad y Acceso

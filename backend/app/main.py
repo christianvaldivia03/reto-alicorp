@@ -1,6 +1,8 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.config import get_settings
@@ -18,6 +20,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Content Suite API", version=__version__, lifespan=lifespan)
+
+# CORS: el frontend (Next.js) llama a la API desde el navegador. Orígenes
+# permitidos vía CORS_ORIGINS (coma-separado); por defecto, dev local.
+_cors = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3123").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _cors if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(auth_router)
 app.include_router(brand_router)
 app.include_router(content_router)

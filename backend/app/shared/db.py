@@ -5,6 +5,7 @@ soporta prepared statements → prepare_threshold=None.
 """
 import psycopg
 from pgvector.psycopg import register_vector
+from psycopg_pool import ConnectionPool
 
 from app.config import get_settings
 
@@ -75,10 +76,30 @@ create table if not exists audit_reports (
 """
 
 
-def connect() -> psycopg.Connection:
-    conn = psycopg.connect(get_settings().database_url, prepare_threshold=None)
-    register_vector(conn)
-    return conn
+# Pool de conexiones (perezoso): abrir una conexión a Supabase cuesta ~2s, así
+# que se reutilizan. Los repos hacen `with connect() as conn:` sin cambios: el
+# context manager del pool devuelve la conexión al pool al salir (no la cierra).
+_pool: ConnectionPool | None = None
+
+
+def _get_pool() -> ConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = ConnectionPool(
+            get_settings().database_url,
+            min_size=2,
+            max_size=10,
+            # El pooler de Supabase (modo transacción) no soporta prepared statements.
+            kwargs={"prepare_threshold": None},
+            configure=register_vector,
+            open=True,
+        )
+    return _pool
+
+
+def connect():
+    """Toma una conexión prestada del pool. Uso: `with connect() as conn: ...`."""
+    return _get_pool().connection()
 
 
 def init_db() -> None:
