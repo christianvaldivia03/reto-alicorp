@@ -21,6 +21,7 @@ export function homeForRole(rol: Role): string {
 // Roles permitidos por ruta (para el guard de presentación y la navegación).
 export const ROUTE_ROLES: Record<string, Role[]> = {
   '/studio/brand': [Role.CREADOR],
+  '/studio/brands': [Role.CREADOR],
   '/studio/content': [Role.CREADOR],
   '/studio/approvals': [Role.APROBADOR_A],
   '/studio/audit': [Role.APROBADOR_B],

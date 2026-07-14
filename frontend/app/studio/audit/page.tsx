@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ScanEye, UploadCloud, CheckCircle2, XCircle, Loader2, History, ImageOff } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
-import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { StatusBadge } from '@/components/ui-custom/status-badge';
+import { PageHeader } from '@/components/ui-custom/page-header';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { ApiError, contentApi } from '@/lib/api';
 import { useToast } from '@/contexts/toast-context';
 import { Role, Verdict } from '@/lib/types';
@@ -17,6 +21,7 @@ function AuditContent() {
   const [items, setItems] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [auditing, setAuditing] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Content | null>(null);
   const [report, setReport] = useState<AuditReport | null>(null);
@@ -42,16 +47,15 @@ function AuditContent() {
         setSelected((prev) => (prev ? list.find((c) => c.id === prev.id) ?? prev : null));
       })
       .catch((err) =>
-        setError(err instanceof Error ? err.message : 'No se pudo cargar el contenido')
+        setError(err instanceof Error ? err.message : 'No se pudo cargar el contenido'),
       );
 
   useEffect(() => {
     loadItems().finally(() => setLoading(false));
   }, []);
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selected) return;
+  const auditFile = async (file: File) => {
+    if (!selected) return;
     if (!file.type.startsWith('image/')) {
       setError('El archivo debe ser una imagen (PNG/JPG).');
       return;
@@ -64,9 +68,9 @@ function AuditContent() {
       setReport(r);
       toast(
         r.veredicto === Verdict.CUMPLE ? 'Auditoría: cumple' : 'Auditoría: no cumple · rechazado',
-        r.veredicto === Verdict.CUMPLE ? 'success' : 'error'
+        r.veredicto === Verdict.CUMPLE ? 'success' : 'error',
       );
-      await loadItems(); // si NO_CUMPLE, el backend rechazó el contenido: refrescar estado
+      await loadItems();
       await loadHistory(selected.id);
     } catch (err) {
       if (err instanceof ApiError && err.status === 502) {
@@ -80,55 +84,95 @@ function AuditContent() {
     }
   };
 
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) auditFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && selected && !auditing) auditFile(file);
+  };
+
+  const cumple = report?.veredicto === Verdict.CUMPLE;
+
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Auditoría de imágenes</h1>
-        <p className="text-muted-foreground">
-          Sube una imagen y el modelo de visión la contrasta contra el manual de marca.
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
+      <PageHeader
+        icon={ScanEye}
+        title="Auditoría de imágenes"
+        description="Sube una imagen y el modelo de visión la contrasta contra el manual de marca."
+      />
 
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+      {error && (
+        <div className="mb-6">
+          <ErrorAlert message={error} onDismiss={() => setError(null)} />
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-2">
-          <h2 className="text-sm font-semibold mb-4">Contenido ({items.length})</h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Lista de contenido */}
+        <div className="lg:col-span-1">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Contenido ({items.length})
+          </h2>
           {loading ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner size="md" />
+            <div className="space-y-2">
+              <SkeletonCard />
+              <SkeletonCard />
             </div>
           ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No hay contenido para auditar.</p>
+            <div className="flex flex-col items-center rounded-xl border border-dashed border-border py-10 text-center">
+              <ImageOff className="mb-2 size-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">No hay contenido para auditar.</p>
+            </div>
           ) : (
-            items.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => selectContent(item)}
-                className={`w-full text-left p-4 rounded-lg border transition-colors ${
-                  selected?.id === item.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-xs font-medium text-primary">{item.tipo}</span>
-                  <StatusBadge status={item.estado} />
-                </div>
-                <p className="text-sm line-clamp-2">{item.texto}</p>
-              </button>
-            ))
+            <div className="space-y-2">
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => selectContent(item)}
+                  className={`w-full cursor-pointer rounded-xl border p-4 text-left transition-all duration-200 ${
+                    selected?.id === item.id
+                      ? 'border-brand bg-brand/5 ring-1 ring-brand/20'
+                      : 'border-border hover:border-brand/40 hover:bg-accent/50'
+                  }`}
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-brand">
+                      {item.tipo}
+                    </span>
+                    <StatusBadge status={item.estado} />
+                  </div>
+                  <p className="line-clamp-2 text-sm">{item.texto}</p>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
+        {/* Panel de auditoría */}
         <div className="lg:col-span-2">
           {!selected ? (
-            <div className="bg-card border border-border rounded-lg p-12 text-center">
+            <div className="flex h-full min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center">
+              <ScanEye className="mb-3 size-10 text-muted-foreground" />
               <p className="text-muted-foreground">Selecciona un contenido y sube su imagen final.</p>
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="bg-card border border-dashed border-border rounded-lg p-10 text-center">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!auditing) setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`flex flex-col items-center rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${
+                  dragOver ? 'border-brand bg-brand/5' : 'border-border'
+                }`}
+              >
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -137,59 +181,63 @@ function AuditContent() {
                   disabled={auditing}
                   className="hidden"
                 />
-                <h3 className="text-lg font-semibold mb-2">
-                  {auditing ? 'Auditando imagen…' : 'Subir imagen para auditar'}
-                </h3>
                 {auditing ? (
-                  <div className="flex justify-center">
-                    <LoadingSpinner size="md" />
-                  </div>
+                  <>
+                    <Loader2 className="mb-3 size-8 animate-spin text-brand" />
+                    <h3 className="text-lg font-semibold">Auditando imagen…</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">El modelo de visión está evaluando.</p>
+                  </>
                 ) : (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Elegir imagen
-                  </button>
+                  <>
+                    <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-brand/10 text-brand">
+                      <UploadCloud className="size-6" />
+                    </span>
+                    <h3 className="text-lg font-semibold">Subir imagen para auditar</h3>
+                    <p className="mt-1 mb-4 text-sm text-muted-foreground">
+                      Arrastra y suelta o elige un archivo (PNG/JPG).
+                    </p>
+                    <Button size="xl" onClick={() => fileInputRef.current?.click()}>
+                      Elegir imagen
+                    </Button>
+                  </>
                 )}
               </div>
 
               {report && (
                 <div
-                  className={`rounded-lg p-6 border ${
-                    report.veredicto === Verdict.CUMPLE
-                      ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  className={`rounded-2xl border p-6 ${
+                    cumple
+                      ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-900/20'
+                      : 'border-red-200 bg-red-50 dark:border-red-800/60 dark:bg-red-900/20'
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <span
-                      className={`text-2xl ${
-                        report.veredicto === Verdict.CUMPLE
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      {report.veredicto === Verdict.CUMPLE ? '✓' : '✕'}
-                    </span>
+                  <div className="mb-3 flex items-center gap-3">
+                    {cumple ? (
+                      <CheckCircle2 className="size-8 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <XCircle className="size-8 text-red-600 dark:text-red-400" />
+                    )}
                     <p className="text-lg font-bold">
-                      {report.veredicto === Verdict.CUMPLE ? 'Cumple con el manual' : 'No cumple'}
+                      {cumple ? 'Cumple con el manual' : 'No cumple'}
                     </p>
                   </div>
-                  {report.motivo && <p className="text-sm mb-3">{report.motivo}</p>}
-                  {report.veredicto === Verdict.NO_CUMPLE && (
-                    <p className="text-xs font-medium mb-3">
+                  {report.motivo && <p className="mb-3 text-sm leading-relaxed">{report.motivo}</p>}
+                  {!cumple && (
+                    <p className="mb-3 text-xs font-medium">
                       El contenido fue marcado como <strong>Rechazado</strong> por la auditoría.
                     </p>
                   )}
                   {report.reglas_evaluadas.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">
+                      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Reglas evaluadas
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {report.reglas_evaluadas.map((r, i) => (
-                          <span key={i} className="text-xs bg-background px-2 py-1 rounded border border-border/50">
+                          <span
+                            key={i}
+                            className="rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs"
+                          >
                             {r}
                           </span>
                         ))}
@@ -200,35 +248,30 @@ function AuditContent() {
               )}
 
               {history.length > 0 && (
-                <div className="bg-card border border-border rounded-lg p-6">
-                  <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase">
+                <Card className="p-6">
+                  <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <History className="size-4" />
                     Historial de auditorías ({history.length})
                   </h3>
                   <div className="space-y-2">
                     {history.map((h) => (
                       <div
                         key={h.id}
-                        className="flex items-center gap-2 text-sm border-b border-border/50 pb-2 last:border-0"
+                        className="flex items-center gap-2 border-b border-border/60 pb-2 text-sm last:border-0"
                       >
-                        <span
-                          className={
-                            h.veredicto === Verdict.CUMPLE
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-red-600 dark:text-red-400'
-                          }
-                        >
-                          {h.veredicto === Verdict.CUMPLE ? '✓' : '✕'}
-                        </span>
+                        {h.veredicto === Verdict.CUMPLE ? (
+                          <CheckCircle2 className="size-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <XCircle className="size-4 flex-shrink-0 text-red-600 dark:text-red-400" />
+                        )}
                         <span className="font-medium">
                           {h.veredicto === Verdict.CUMPLE ? 'Cumple' : 'No cumple'}
                         </span>
-                        {h.motivo && (
-                          <span className="text-muted-foreground truncate">— {h.motivo}</span>
-                        )}
+                        {h.motivo && <span className="truncate text-muted-foreground">— {h.motivo}</span>}
                       </div>
                     ))}
                   </div>
-                </div>
+                </Card>
               )}
             </div>
           )}

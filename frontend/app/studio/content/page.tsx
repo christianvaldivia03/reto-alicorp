@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { PenLine, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
-import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
 import { StatusBadge } from '@/components/ui-custom/status-badge';
+import { PageHeader } from '@/components/ui-custom/page-header';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Field, Select, Textarea } from '@/components/ui/input';
+import { Reveal } from '@/components/ui/reveal';
 import { brandApi, contentApi } from '@/lib/api';
 import { useToast } from '@/contexts/toast-context';
 import { ContentType, Role } from '@/lib/types';
@@ -36,7 +41,7 @@ function ContentStudioContent() {
         if (bs[0]) setBrandId(bs[0].id);
       })
       .catch((err) =>
-        setError(err instanceof Error ? err.message : 'No se pudieron cargar las marcas')
+        setError(err instanceof Error ? err.message : 'No se pudieron cargar las marcas'),
       );
   }, []);
 
@@ -57,113 +62,124 @@ function ContentStudioContent() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Generar contenido</h1>
-        <p className="text-muted-foreground">
-          El sistema consulta el manual de marca (RAG) antes de generar y aplica sus reglas.
-        </p>
-      </div>
+    <div className="mx-auto max-w-4xl p-4 md:p-6 lg:p-8">
+      <PageHeader
+        icon={PenLine}
+        title="Generar contenido"
+        description="El sistema consulta el manual de marca (RAG) antes de generar y aplica sus reglas."
+      />
 
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
-
-      {brands.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-6 text-center">
-          <p className="text-muted-foreground mb-3">
-            No hay marcas todavía. Crea una marca antes de generar contenido.
-          </p>
-          <Link
-            href="/studio/brand"
-            className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
-          >
-            Ir a Marcas
-          </Link>
-        </div>
-      ) : (
-        <div className="bg-card border border-border rounded-lg p-6 mb-8">
-          <form onSubmit={handleGenerate} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Marca</label>
-              <select
-                value={brandId}
-                onChange={(e) => setBrandId(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {brands.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.categoria} — {b.tono}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Tipo de contenido</label>
-              <select
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {TIPOS.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Brief</label>
-              <textarea
-                value={brief}
-                onChange={(e) => setBrief(e.target.value)}
-                placeholder="Describe qué quieres generar…"
-                required
-                rows={6}
-                className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={generating || !brief.trim() || !brandId}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
-            >
-              {generating ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  Generando…
-                </>
-              ) : (
-                'Generar'
-              )}
-            </button>
-          </form>
+      {error && (
+        <div className="mb-6">
+          <ErrorAlert message={error} onDismiss={() => setError(null)} />
         </div>
       )}
 
-      {result && (
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">Contenido generado</h2>
-            <StatusBadge status={result.estado} />
-          </div>
-          <p className="text-sm whitespace-pre-wrap mb-4">{result.texto}</p>
-          {result.reglas_aplicadas.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">
-                Reglas aplicadas (RAG)
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {result.reglas_aplicadas.map((r, i) => (
-                  <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                    {r}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground mt-4">
-            Quedó <strong>Pendiente de aprobación</strong>.
+      {brands.length === 0 ? (
+        <Card className="p-8 text-center">
+          <p className="mb-4 text-muted-foreground">
+            No hay marcas todavía. Crea una marca antes de generar contenido.
           </p>
-        </div>
+          <Button size="xl" nativeButton={false} render={<Link href="/studio/brand" />}>
+            Ir a Marcas
+            <ArrowRight />
+          </Button>
+        </Card>
+      ) : (
+        <Reveal>
+          <Card>
+            <CardHeader>
+              <CardTitle>Nuevo contenido</CardTitle>
+              <CardDescription>Elige marca y tipo, describe el brief y genera.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleGenerate} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Marca" htmlFor="brand">
+                    <Select id="brand" value={brandId} onChange={(e) => setBrandId(e.target.value)}>
+                      {brands.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.categoria} — {b.tono}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Tipo de contenido" htmlFor="tipo">
+                    <Select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                      {TIPOS.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <Field label="Brief" htmlFor="brief">
+                  <Textarea
+                    id="brief"
+                    value={brief}
+                    onChange={(e) => setBrief(e.target.value)}
+                    placeholder="Describe qué quieres generar…"
+                    required
+                    rows={6}
+                  />
+                </Field>
+                <Button
+                  type="submit"
+                  size="xl"
+                  disabled={generating || !brief.trim() || !brandId}
+                  className="w-full sm:w-auto"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="animate-spin" />
+                      Generando…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles />
+                      Generar
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </Reveal>
+      )}
+
+      {result && (
+        <Reveal className="mt-8">
+          <Card>
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle>Contenido generado</CardTitle>
+              <StatusBadge status={result.estado} />
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">{result.texto}</p>
+              {result.reglas_aplicadas.length > 0 && (
+                <div className="mt-5 border-t border-border pt-4">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Reglas aplicadas (RAG)
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {result.reglas_aplicadas.map((r, i) => (
+                      <span
+                        key={i}
+                        className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand ring-1 ring-inset ring-brand/20"
+                      >
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="mt-4 text-xs text-muted-foreground">
+                Quedó <strong className="font-medium text-foreground">Pendiente de aprobación</strong>.
+              </p>
+            </CardContent>
+          </Card>
+        </Reveal>
       )}
     </div>
   );

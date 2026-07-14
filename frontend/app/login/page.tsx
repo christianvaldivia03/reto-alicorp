@@ -2,10 +2,18 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Loader2, ShieldCheck, Sparkles, ScanEye } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
+import { Button } from '@/components/ui/button';
+import { Field, Input } from '@/components/ui/input';
 import { homeForRole } from '@/lib/roles';
+
+const HIGHLIGHTS = [
+  { icon: Sparkles, text: 'Generación de contenido con reglas de marca (RAG).' },
+  { icon: ShieldCheck, text: 'Aprobación con separación estricta de funciones.' },
+  { icon: ScanEye, text: 'Auditoría multimodal de imágenes contra el manual.' },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,70 +34,96 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground text-2xl font-bold">C</span>
-          </div>
+    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+      {/* Panel de marca (asimétrico, solo desktop) */}
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground lg:flex">
+        <div
+          className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full opacity-40 blur-3xl"
+          style={{ background: 'radial-gradient(circle, var(--brand), transparent 70%)' }}
+        />
+        <div className="relative flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-brand text-sm font-bold text-brand-foreground">
+            C
+          </span>
+          <span className="text-lg font-semibold tracking-tight">Content Suite</span>
         </div>
 
-        <h1 className="text-3xl font-bold text-center mb-2">Content Suite</h1>
-        <p className="text-center text-muted-foreground mb-8">
-          Consistencia de marca con IA
+        <div className="relative max-w-sm">
+          <h2 className="text-[clamp(1.75rem,3vw,2.5rem)] font-bold leading-[1.1] tracking-tight">
+            Consistencia de marca, impuesta por IA.
+          </h2>
+          <ul className="mt-8 space-y-4">
+            {HIGHLIGHTS.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-start gap-3 text-sm text-primary-foreground/80">
+                <Icon className="mt-0.5 size-5 flex-shrink-0 text-brand" />
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative text-xs text-primary-foreground/50">
+          Plataforma B2B · Alicorp IAGen
         </p>
+      </aside>
 
-        <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
-          {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+      {/* Formulario */}
+      <main className="flex items-center justify-center bg-background px-4 py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 flex flex-col items-center text-center lg:hidden">
+            <span className="mb-4 flex size-14 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-primary-foreground">
+              C
+            </span>
+            <h1 className="text-2xl font-bold tracking-tight">Content Suite</h1>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 mt-2">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2">
-                Correo electrónico
-              </label>
-              <input
-                type="email"
+          <div className="mb-8 hidden lg:block">
+            <h1 className="text-2xl font-bold tracking-tight">Inicia sesión</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Accede a tu espacio de trabajo.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+
+            <Field label="Correo electrónico" htmlFor="email">
+              <Input
                 id="email"
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@correo.com"
+                autoComplete="email"
                 required
-                className="w-full px-4 py-2 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
-            </div>
+            </Field>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-2">
-                Contraseña
-              </label>
-              <input
-                type="password"
+            <Field label="Contraseña" htmlFor="password">
+              <Input
                 id="password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                autoComplete="current-password"
                 required
-                className="w-full px-4 py-2 bg-background border border-input rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
-            </div>
+            </Field>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-10 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
+            <Button type="submit" size="lg" disabled={isLoading} className="w-full">
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" />
+                  <Loader2 className="animate-spin" />
                   Ingresando…
                 </>
               ) : (
                 'Ingresar'
               )}
-            </button>
+            </Button>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

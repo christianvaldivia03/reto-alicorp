@@ -1,10 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ClipboardCheck, Check, X, Inbox } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AppLayout } from '@/components/layout/app-layout';
-import { LoadingSpinner } from '@/components/ui-custom/loading-spinner';
 import { ErrorAlert } from '@/components/ui-custom/error-alert';
+import { PageHeader } from '@/components/ui-custom/page-header';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { contentApi } from '@/lib/api';
 import { useToast } from '@/contexts/toast-context';
 import { ContentStatus, Role } from '@/lib/types';
@@ -48,7 +54,7 @@ function ApprovalQueueContent() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo aprobar');
-      await load(); // refrescar por si el estado cambió (422)
+      await load();
     } finally {
       setActing(false);
     }
@@ -74,65 +80,86 @@ function ApprovalQueueContent() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Cola de aprobación</h1>
-        <p className="text-muted-foreground">Revisa y aprueba o rechaza contenido pendiente.</p>
-      </div>
+    <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
+      <PageHeader
+        icon={ClipboardCheck}
+        title="Cola de aprobación"
+        description="Revisa y aprueba o rechaza contenido pendiente."
+      />
 
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+      {error && (
+        <div className="mb-6">
+          <ErrorAlert message={error} onDismiss={() => setError(null)} />
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-2">
-          <h2 className="text-sm font-semibold mb-4">Pendientes ({queue.length})</h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Lista */}
+        <div className="lg:col-span-1">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Pendientes ({queue.length})
+          </h2>
           {loading ? (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner size="md" />
+            <div className="space-y-2">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
             </div>
           ) : queue.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No hay contenido pendiente.</p>
+            <div className="flex flex-col items-center rounded-xl border border-dashed border-border py-10 text-center">
+              <Inbox className="mb-2 size-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">No hay contenido pendiente.</p>
+            </div>
           ) : (
-            queue.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setSelected(item)}
-                className={`w-full text-left p-4 rounded-lg border transition-colors ${
-                  selected?.id === item.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50'
-                }`}
-              >
-                <p className="text-xs font-medium text-primary mb-1">{item.tipo}</p>
-                <p className="text-sm line-clamp-2">{item.texto}</p>
-              </button>
-            ))
+            <div className="space-y-2">
+              {queue.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSelected(item)}
+                  className={`w-full cursor-pointer rounded-xl border p-4 text-left transition-all duration-200 ${
+                    selected?.id === item.id
+                      ? 'border-brand bg-brand/5 ring-1 ring-brand/20'
+                      : 'border-border hover:border-brand/40 hover:bg-accent/50'
+                  }`}
+                >
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand">
+                    {item.tipo}
+                  </p>
+                  <p className="line-clamp-2 text-sm text-foreground">{item.texto}</p>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
+        {/* Detalle */}
         <div className="lg:col-span-2">
           {selected ? (
-            <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            <Card className="space-y-6 p-6">
               <div>
-                <p className="text-xs font-medium text-primary mb-1">{selected.tipo}</p>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand">
+                  {selected.tipo}
+                </p>
                 {(selected.created_by || selected.created_at) && (
-                  <p className="text-xs text-muted-foreground mb-2">
+                  <p className="mb-2 text-xs text-muted-foreground">
                     {selected.created_by && <>Autor: {selected.created_by}</>}
-                    {selected.created_at && (
-                      <> · {new Date(selected.created_at).toLocaleString()}</>
-                    )}
+                    {selected.created_at && <> · {new Date(selected.created_at).toLocaleString()}</>}
                   </p>
                 )}
-                <p className="text-sm whitespace-pre-wrap">{selected.texto}</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{selected.texto}</p>
               </div>
 
               {selected.reglas_aplicadas.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Reglas aplicadas
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {selected.reglas_aplicadas.map((r, i) => (
-                      <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                      <span
+                        key={i}
+                        className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand ring-1 ring-inset ring-brand/20"
+                      >
                         {r}
                       </span>
                     ))}
@@ -140,65 +167,67 @@ function ApprovalQueueContent() {
                 </div>
               )}
 
-              <div className="flex gap-2 pt-4 border-t border-border">
-                <button
-                  onClick={handleApprove}
-                  disabled={acting}
-                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium disabled:opacity-50 transition-colors"
-                >
+              <div className="flex gap-3 border-t border-border pt-5">
+                <Button variant="success" size="xl" onClick={handleApprove} disabled={acting} className="flex-1">
+                  <Check />
                   {acting ? 'Procesando…' : 'Aprobar'}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
+                  size="xl"
                   onClick={() => setShowReject(true)}
                   disabled={acting}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 transition-colors"
+                  className="flex-1"
                 >
+                  <X />
                   Rechazar
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           ) : (
-            <div className="bg-card border border-border rounded-lg p-12 text-center">
-              <p className="text-muted-foreground">Selecciona un elemento de la cola para revisarlo.</p>
+            <div className="flex h-full min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center">
+              <ClipboardCheck className="mb-3 size-10 text-muted-foreground" />
+              <p className="text-muted-foreground">
+                Selecciona un elemento de la cola para revisarlo.
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      {showReject && selected && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">Rechazar contenido</h3>
-            <p className="text-sm text-muted-foreground mb-4">Indica el motivo del rechazo (obligatorio).</p>
-            <textarea
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Motivo…"
-              rows={4}
-              className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none mb-4"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={handleReject}
-                disabled={acting || !motivo.trim()}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 transition-colors"
-              >
-                Rechazar
-              </button>
-              <button
-                onClick={() => {
-                  setShowReject(false);
-                  setMotivo('');
-                }}
-                disabled={acting}
-                className="flex-1 px-4 py-2 border border-input rounded-lg font-medium hover:bg-muted transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
+      <Dialog
+        open={showReject && !!selected}
+        onClose={() => {
+          setShowReject(false);
+          setMotivo('');
+        }}
+        title="Rechazar contenido"
+        description="Indica el motivo del rechazo (obligatorio)."
+      >
+        <Textarea
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          placeholder="Motivo…"
+          rows={4}
+          autoFocus
+        />
+        <div className="mt-5 flex gap-3">
+          <Button variant="danger" onClick={handleReject} disabled={acting || !motivo.trim()} className="flex-1">
+            {acting ? 'Rechazando…' : 'Rechazar'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowReject(false);
+              setMotivo('');
+            }}
+            disabled={acting}
+            className="flex-1"
+          >
+            Cancelar
+          </Button>
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }
