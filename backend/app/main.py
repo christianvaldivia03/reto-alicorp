@@ -19,7 +19,16 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Content Suite API", version=__version__, lifespan=lifespan)
+# En producción ocultamos Swagger/ReDoc/OpenAPI (no exponer el mapa de la API).
+_docs_off = get_settings().app_env == "production"
+app = FastAPI(
+    title="Content Suite API",
+    version=__version__,
+    lifespan=lifespan,
+    docs_url=None if _docs_off else "/docs",
+    redoc_url=None if _docs_off else "/redoc",
+    openapi_url=None if _docs_off else "/openapi.json",
+)
 
 # CORS: el frontend (Next.js) llama a la API desde el navegador. Orígenes
 # permitidos vía CORS_ORIGINS (coma-separado); por defecto, dev local.
@@ -32,10 +41,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router)
-app.include_router(brand_router)
-app.include_router(content_router)
-app.include_router(governance_router)
+_API = "/api/v1"
+app.include_router(auth_router, prefix=_API)
+app.include_router(brand_router, prefix=_API)
+app.include_router(content_router, prefix=_API)
+app.include_router(governance_router, prefix=_API)
 
 
 @app.get("/health")
