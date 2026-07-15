@@ -34,9 +34,10 @@ router = APIRouter(prefix="/brands", tags=["brand-identity"])
 
 class CreateBrandIn(BaseModel):
     nombre: str
-    categoria: str
-    tono: str
-    publico: str
+    # Sólo el nombre es obligatorio; el resto son señales dinámicas opcionales.
+    categoria: str = ""
+    tono: str = ""
+    publico: str = ""
     # Parámetros dinámicos opcionales (label -> valor) que el usuario añade.
     extras: dict[str, str] = {}
 

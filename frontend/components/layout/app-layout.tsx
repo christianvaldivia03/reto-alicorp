@@ -71,9 +71,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
           <Link href={homeHref} className="flex items-center gap-2.5" onClick={() => setSidebarOpen(false)}>
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-              C
+              P
             </span>
-            <span className="text-[0.95rem] font-semibold tracking-tight">Content Suite</span>
+            <span className="text-[0.95rem] font-semibold tracking-tight">Prisma</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -185,7 +185,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
                 <ChevronRight className="size-3.5 text-muted-foreground/60" aria-hidden />
                 <span className="font-semibold tracking-tight" aria-current="page">
-                  {PAGE_TITLES[pathname] ?? 'Content Suite'}
+                  {PAGE_TITLES[pathname] ?? 'Prisma'}
                 </span>
               </>
             )}

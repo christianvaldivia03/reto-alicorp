@@ -16,22 +16,18 @@ class RuleType(str, Enum):
 class BrandParameters:
     """Parámetros de entrada de la marca. Value Object inmutable y validado.
 
-    Los 3 primeros son obligatorios; `extras` son parámetros dinámicos opcionales
-    (label -> valor) que el usuario añade y que enriquecen el prompt del manual.
+    Sólo el nombre es obligatorio (validado en el caso de uso); categoría, tono,
+    público y `extras` son parámetros dinámicos opcionales (label -> valor) que
+    el usuario añade y que enriquecen el prompt del manual.
     `compare=False` evita romper hash/eq con un dict."""
 
-    categoria: str
-    tono: str
-    publico: str
+    categoria: str = ""
+    tono: str = ""
+    publico: str = ""
     # Nombre legible y único de la marca. Obligatorio al crear (validado en el
     # caso de uso); puede venir vacío al leer marcas antiguas sin nombre.
     nombre: str = ""
     extras: dict[str, str] = field(default_factory=dict, compare=False)
-
-    def __post_init__(self):
-        for campo, valor in (("categoria", self.categoria), ("tono", self.tono), ("publico", self.publico)):
-            if not valor or not valor.strip():
-                raise DomainError(f"BrandParameters.{campo} no puede estar vacío")
 
 
 @dataclass(frozen=True)

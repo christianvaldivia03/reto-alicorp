@@ -43,9 +43,9 @@ export default function LoginPage() {
         />
         <div className="relative flex items-center gap-2.5">
           <span className="flex size-9 items-center justify-center rounded-lg bg-brand text-sm font-bold text-brand-foreground">
-            C
+            P
           </span>
-          <span className="text-lg font-semibold tracking-tight">Content Suite</span>
+          <span className="text-lg font-semibold tracking-tight">Prisma</span>
         </div>
 
         <div className="relative max-w-sm">
@@ -72,9 +72,9 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center text-center lg:hidden">
             <span className="mb-4 flex size-14 items-center justify-center rounded-xl bg-primary text-2xl font-bold text-primary-foreground">
-              C
+              P
             </span>
-            <h1 className="text-2xl font-bold tracking-tight">Content Suite</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Prisma</h1>
           </div>
 
           <div className="mb-8 hidden lg:block">

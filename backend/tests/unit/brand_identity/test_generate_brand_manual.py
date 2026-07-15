@@ -61,15 +61,16 @@ def test_generate_passes_extras_to_llm():
     assert "Canal: TikTok" in llm.calls[0]
 
 
-def test_generate_rejects_invalid_params_without_calling_llm():
+def test_generate_allows_only_nombre():
+    # Señales opcionales: con sólo el nombre, el manual se genera igual.
     llm = FakeTextLlm(_LLM_JSON)
     uc = GenerateBrandManual(
         llm=llm, vector_store=InMemoryVectorStore(),
         repo=InMemoryBrandManualRepo(), id_factory=lambda: "brand-1",
     )
-    with pytest.raises(DomainError):
-        uc.execute(nombre="Marca X", categoria="", tono="Divertido", publico="Gen Z")
-    assert llm.calls == []   # el LLM nunca se invocó
+    manual = uc.execute(nombre="Marca X")
+    assert manual.parametros.nombre == "Marca X"
+    assert len(llm.calls) == 1
 
 
 def test_generate_requires_nombre():

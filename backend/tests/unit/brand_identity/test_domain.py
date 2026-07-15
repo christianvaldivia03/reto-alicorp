@@ -14,11 +14,11 @@ def _params():
     return BrandParameters(categoria="Snack de quinua", tono="Divertido", publico="Gen Z")
 
 
-def test_brand_parameters_rejects_empty_fields():
-    with pytest.raises(DomainError):
-        BrandParameters(categoria="", tono="Divertido", publico="Gen Z")
-    with pytest.raises(DomainError):
-        BrandParameters(categoria="X", tono="  ", publico="Gen Z")
+def test_brand_parameters_allows_empty_signals():
+    # Sólo el nombre es obligatorio (validado en el caso de uso); categoría,
+    # tono y público son ahora señales dinámicas opcionales.
+    p = BrandParameters(nombre="Quinua Pop")
+    assert p.categoria == p.tono == p.publico == ""
 
 
 def test_brand_manual_requires_at_least_one_rule():

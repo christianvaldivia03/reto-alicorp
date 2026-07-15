@@ -36,7 +36,7 @@ function BrandStudioContent() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState<BrandManual | null>(null);
-  const [form, setForm] = useState({ nombre: '', categoria: '', tono: '', publico: '' });
+  const [form, setForm] = useState({ nombre: '' });
   // Parámetros dinámicos opcionales que el usuario puede añadir.
   const [extras, setExtras] = useState<Extra[]>([]);
 
@@ -57,16 +57,10 @@ function BrandStudioContent() {
         .map((x) => [x.label.trim(), x.valor.trim()]),
     );
     try {
-      const manual = await brandApi.create(
-        form.nombre.trim(),
-        form.categoria.trim(),
-        form.tono.trim(),
-        form.publico.trim(),
-        extrasObj,
-      );
+      const manual = await brandApi.create(form.nombre.trim(), extrasObj);
       setGenerated(manual);
       toast(`Manual «${manual.nombre}» generado con ${manual.reglas.length} regla(s)`);
-      setForm({ nombre: '', categoria: '', tono: '', publico: '' });
+      setForm({ nombre: '' });
       setExtras([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar el manual');
@@ -75,8 +69,7 @@ function BrandStudioContent() {
     }
   };
 
-  const valid =
-    form.nombre.trim() && form.categoria.trim() && form.tono.trim() && form.publico.trim();
+  const valid = !!form.nombre.trim();
 
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6 lg:p-8">
@@ -106,7 +99,7 @@ function BrandStudioContent() {
               <CardHeader>
                 <CardTitle>Nueva marca</CardTitle>
                 <CardDescription>
-                  Tres señales base; añade los parámetros extra que necesites.
+                  Sólo el nombre es obligatorio; añade los atributos que necesites.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -121,37 +114,6 @@ function BrandStudioContent() {
                       value={form.nombre}
                       onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                       placeholder="Ej. Quinua Pop"
-                      required
-                    />
-                  </Field>
-                  <Field
-                    label="Categoría de producto"
-                    htmlFor="categoria"
-                    hint="Qué vende la marca."
-                  >
-                    <Input
-                      id="categoria"
-                      value={form.categoria}
-                      onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-                      placeholder="Ej. Snacks saludables"
-                      required
-                    />
-                  </Field>
-                  <Field label="Tono" htmlFor="tono" hint="Cómo comunica.">
-                    <Input
-                      id="tono"
-                      value={form.tono}
-                      onChange={(e) => setForm({ ...form, tono: e.target.value })}
-                      placeholder="Ej. Cercano y divertido"
-                      required
-                    />
-                  </Field>
-                  <Field label="Público objetivo" htmlFor="publico" hint="A quién le habla.">
-                    <Input
-                      id="publico"
-                      value={form.publico}
-                      onChange={(e) => setForm({ ...form, publico: e.target.value })}
-                      placeholder="Ej. Jóvenes 18-25"
                       required
                     />
                   </Field>

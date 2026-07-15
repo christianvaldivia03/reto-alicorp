@@ -21,12 +21,19 @@ def build_manual_prompt(p: BrandParameters) -> str:
         "Eres un estratega de marca. Genera un manual de marca como JSON: una lista "
         "de reglas, cada una con 'categoria', 'texto' y 'tipo' "
         "(PROHIBICION | RECOMENDACION | OBLIGACION). Responde SOLO el JSON.\n"
-        f"Marca: {p.nombre}\nCategoría de producto: {p.categoria}\nTono: {p.tono}\nPúblico objetivo: {p.publico}"
+        f"Marca: {p.nombre}"
     )
-    # Parámetros dinámicos que el usuario añadió: se suman como contexto extra.
-    extras = {k.strip(): v.strip() for k, v in p.extras.items() if k.strip() and v.strip()}
-    if extras:
-        prompt += "\nOtros parámetros:\n" + "\n".join(f"{k}: {v}" for k, v in extras.items())
+    # Nombre fijo + señales opcionales (categoría/tono/público) + extras dinámicos:
+    # sólo se añaden al prompt las que el usuario haya rellenado.
+    señales = {
+        "Categoría de producto": p.categoria,
+        "Tono": p.tono,
+        "Público objetivo": p.publico,
+        **p.extras,
+    }
+    for k, v in señales.items():
+        if k.strip() and v.strip():
+            prompt += f"\n{k.strip()}: {v.strip()}"
     return prompt
 
 
@@ -48,9 +55,9 @@ class GenerateBrandManual:
     def execute(
         self,
         nombre: str,
-        categoria: str,
-        tono: str,
-        publico: str,
+        categoria: str = "",
+        tono: str = "",
+        publico: str = "",
         extras: dict[str, str] | None = None,
     ) -> BrandManual:
         # Nombre obligatorio y único: identificador principal de la marca en

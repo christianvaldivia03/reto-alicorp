@@ -13,9 +13,30 @@ const jakarta = Plus_Jakarta_Sans({
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'Content Suite',
-  description: 'AI-powered content management with brand compliance',
-  generator: 'v0.app',
+  title: {
+    default: 'Prisma · Una marca, infinito contenido consistente',
+    template: '%s · Prisma',
+  },
+  description:
+    'Prisma refracta el ADN de tu marca en cada pieza de contenido: genera con RAG sobre tu manual, gobierna el flujo de aprobación y audita imágenes contra las reglas. Reto Alicorp.',
+  applicationName: 'Prisma',
+  keywords: ['Alicorp', 'brand compliance', 'RAG', 'gobernanza de marca', 'IA generativa', 'auditoría multimodal'],
+  authors: [{ name: 'Christian Valdivia' }],
+  metadataBase: new URL('http://localhost:3000'),
+  openGraph: {
+    type: 'website',
+    siteName: 'Prisma',
+    title: 'Prisma · Una marca, infinito contenido consistente',
+    description:
+      'Refracta el ADN de tu marca en contenido siempre consistente. Genera, gobierna y audita con IA. Reto Alicorp.',
+    locale: 'es_PE',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Prisma · Una marca, infinito contenido consistente',
+    description: 'Refracta el ADN de tu marca en contenido consistente. Genera, gobierna y audita con IA. Reto Alicorp.',
+  },
+  generator: 'Next.js',
   icons: {
     icon: [
       { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
