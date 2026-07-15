@@ -40,5 +40,10 @@ class LangfuseTracer:
 def build_tracer():
     s = get_settings()
     if s.langfuse_public_key and s.langfuse_secret_key:
-        return SafeTracer(LangfuseTracer())
+        try:
+            return SafeTracer(LangfuseTracer())
+        except Exception:
+            # Observabilidad es best-effort: si Langfuse no está instalado o no
+            # arranca, NO debe tumbar el caso de uso (invariante SafeTracer).
+            return NullTracer()
     return NullTracer()

@@ -17,3 +17,4 @@ pyjwt==2.10.1
 python-multipart==0.0.20
 
 # Fase 5: langfuse
+langfuse==4.14.0
