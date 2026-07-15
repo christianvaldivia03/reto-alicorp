@@ -42,6 +42,47 @@ Necesitas el **backend** y el **frontend** corriendo a la vez. Detalle en cada R
 - 👉 [`backend/README.md`](backend/README.md)
 - 👉 [`frontend/README.md`](frontend/README.md)
 
+### Opción A — Docker (recomendada)
+
+Un solo comando levanta ambos servicios. Requiere **Docker Desktop** corriendo.
+
+```bash
+# 1. Rellena las llaves (Supabase, Groq, Gemini) en backend/.env
+cp backend/.env.example backend/.env      # y edítalo
+
+# 2. Construye y levanta backend (:8000) + frontend (:3123)
+docker compose up --build -d
+
+# 3. Solo la primera vez: crea el esquema y los usuarios semilla
+docker compose exec backend python -m app.shared.db
+docker compose exec backend python -m app.contexts.identity_access.seed
+```
+
+Abre **http://localhost:3123**. Comandos útiles:
+
+```bash
+docker compose logs -f            # ver logs de ambos
+docker compose ps                 # estado de los contenedores
+docker compose down               # detener y eliminar
+```
+
+> **Postgres/pgvector es Supabase** (gestionado), no un contenedor: la conexión sale
+> del `DATABASE_URL` de `backend/.env`. Por eso no hay servicio `db` en el compose.
+>
+> **`NEXT_PUBLIC_API_URL` se compila dentro de la imagen** del frontend (es una variable
+> `NEXT_PUBLIC_*`). El compose la fija a `http://localhost:8000/api/v1` como build arg;
+> si el backend vive en otro origen, ajústalo en [`docker-compose.yml`](docker-compose.yml)
+> y reconstruye (`docker compose up --build`).
+
+Qué contiene cada imagen:
+
+| Servicio | Base | Puerto | Notas |
+|---|---|---|---|
+| `backend` | `python:3.12-slim` | `8000` | uvicorn; instala `requirements.txt`. |
+| `frontend` | `node:22-slim` (multi-stage) | `3123→3000` | Next.js `output: 'standalone'`; imagen mínima (solo el server + deps rastreadas). |
+
+### Opción B — Local (sin Docker)
+
 Resumen (dos terminales):
 
 ```bash

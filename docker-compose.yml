@@ -1,0 +1,19 @@
+# Content Suite — backend (FastAPI) + frontend (Next.js).
+# Postgres/pgvector is Supabase (managed), not a container — see backend/.env DATABASE_URL.
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Client calls the backend from the browser, so this is the host URL, not the compose service name.
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports:
+      - "3123:3000"
+    depends_on:
+      - backend
