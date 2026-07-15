@@ -81,6 +81,8 @@ class BrandSummaryOut(BaseModel):
     categoria: str
     tono: str
     publico: str
+    # Atributos dinámicos (label -> valor) con los que se creó la marca.
+    extras: dict[str, str] = {}
 
     @staticmethod
     def of(s: BrandSummary) -> "BrandSummaryOut":
@@ -90,6 +92,7 @@ class BrandSummaryOut(BaseModel):
             categoria=s.parametros.categoria,
             tono=s.parametros.tono,
             publico=s.parametros.publico,
+            extras=s.parametros.extras,
         )
 
 

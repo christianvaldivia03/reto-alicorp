@@ -23,6 +23,15 @@ const TIPOS = [
   { value: ContentType.PROMPT_IMAGEN, label: 'Prompt de imagen' },
 ];
 
+// Etiqueta del selector: nombre + atributos rellenos (fijos y dinámicos). Las
+// marcas nuevas guardan atributos dinámicos, así que ya no basta categoria/tono.
+function brandLabel(b: BrandSummary): string {
+  const attrs = [b.categoria, b.tono, b.publico, ...Object.values(b.extras ?? {})].filter(
+    (v) => v && v.trim(),
+  );
+  return b.nombre || attrs.join(' · ') || 'Marca sin nombre';
+}
+
 function ContentStudioContent() {
   const toast = useToast();
   const [brands, setBrands] = useState<BrandSummary[]>([]);
@@ -99,7 +108,7 @@ function ContentStudioContent() {
                     <Select id="brand" value={brandId} onChange={(e) => setBrandId(e.target.value)}>
                       {brands.map((b) => (
                         <option key={b.id} value={b.id}>
-                          {b.categoria} — {b.tono}
+                          {brandLabel(b)}
                         </option>
                       ))}
                     </Select>

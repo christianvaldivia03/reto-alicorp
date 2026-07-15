@@ -70,6 +70,9 @@ alter table brand_manuals add column if not exists nombre text;
 create unique index if not exists brand_manuals_nombre_key
     on brand_manuals (lower(nombre)) where nombre is not null;
 
+-- Atributos dinámicos (label -> valor) que el usuario añade al crear la marca.
+alter table brand_manuals add column if not exists extras jsonb not null default '{}';
+
 create table if not exists audit_reports (
     id               text primary key,
     content_id       text references contents(id) on delete cascade,

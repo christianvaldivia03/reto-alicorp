@@ -14,7 +14,7 @@ import { Select } from '@/components/ui/input';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { ApiError, brandApi, contentApi } from '@/lib/api';
 import { useToast } from '@/contexts/toast-context';
-import { Role, Verdict } from '@/lib/types';
+import { ContentType, Role, Verdict } from '@/lib/types';
 import type { AuditReport, Content } from '@/lib/types';
 
 const TIPO_LABELS: Record<string, string> = {
@@ -57,7 +57,9 @@ function AuditContent() {
   const loadItems = () =>
     contentApi
       .list()
-      .then((list) => {
+      .then((all) => {
+        // El Aprobador B solo audita imágenes: filtra a contenido tipo prompt de imagen.
+        const list = all.filter((c) => c.tipo === ContentType.PROMPT_IMAGEN);
         setItems(list);
         setSelected((prev) => (prev ? list.find((c) => c.id === prev.id) ?? prev : null));
       })

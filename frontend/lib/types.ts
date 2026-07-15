@@ -54,6 +54,7 @@ export interface BrandSummary {
   categoria: string;
   tono: string;
   publico: string;
+  extras: Record<string, string>; // atributos dinámicos con los que se creó la marca
 }
 
 // Respuesta de POST /brands (manual recién generado).
